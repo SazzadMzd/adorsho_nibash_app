@@ -41,7 +41,15 @@ class TenantListScreen extends ConsumerWidget {
           }
           return ListView.builder(
             itemCount: tenants.length,
-            itemBuilder: (_, i) => _TenantCard(tenant: tenants[i]),
+            itemBuilder: (_, i) => _TenantCard(
+              tenant: tenants[i],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TenantFormScreen(tenant: tenants[i]),
+                ),
+              ),
+            ),
           );
         },
       ),
@@ -51,7 +59,8 @@ class TenantListScreen extends ConsumerWidget {
 
 class _TenantCard extends StatelessWidget {
   final Tenant tenant;
-  const _TenantCard({required this.tenant});
+  final VoidCallback onTap;
+  const _TenantCard({required this.tenant, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +81,7 @@ class _TenantCard extends StatelessWidget {
         trailing: tenant.isActive
             ? const Icon(Icons.check_circle, color: AppColors.paidColor, size: 20)
             : const Icon(Icons.cancel, color: AppColors.pendingColor, size: 20),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }

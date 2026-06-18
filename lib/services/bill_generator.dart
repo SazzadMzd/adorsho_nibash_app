@@ -1,6 +1,7 @@
 import '../models/flat.dart';
 import '../models/tenant.dart';
 import '../models/bill.dart';
+import '../models/electricity_reading.dart';
 
 class BillGenerator {
   static String currentMonth() {
@@ -48,13 +49,20 @@ class BillGenerator {
   static List<Bill> createBills(
     String month,
     List<Tenant> tenants,
-    Map<String, Flat> flatMap,
-  ) {
+    Map<String, Flat> flatMap, [
+    Map<String, ElectricityReading>? readingsByFlatId,
+  ]) {
     return tenants
         .where((t) => t.isActive)
         .map((tenant) {
           final flat = flatMap[tenant.flatId];
           if (flat == null) return null;
+
+          double electricity = 0;
+          final reading = readingsByFlatId?[tenant.flatId];
+          if (reading != null) {
+            electricity = reading.billAmount;
+          }
 
           return Bill(
             id: '',
@@ -65,7 +73,7 @@ class BillGenerator {
             gas: flat.gas,
             water: flat.water,
             garage: flat.garage,
-            electricity: 0,
+            electricity: electricity,
             status: 'pending',
           );
         })

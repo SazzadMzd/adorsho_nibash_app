@@ -1,3 +1,5 @@
+import 'model_helpers.dart';
+
 class Payment {
   final String id;
   final String billId;
@@ -38,10 +40,10 @@ class Payment {
     tenantId: map['tenantId'] ?? '',
     amount: (map['amount'] ?? 0).toDouble(),
     method: map['method'] ?? 'cash',
-    date: (map['date'] as DateTime?) ?? DateTime.now(),
+    date: timestampToDateTime(map['date']) ?? DateTime.now(),
     note: map['note'] ?? '',
     receiptNo: map['receiptNo'] ?? '',
-    createdAt: (map['createdAt'] as DateTime?) ?? DateTime.now(),
+    createdAt: timestampToDateTime(map['createdAt']) ?? DateTime.now(),
   );
 
   Payment copyWith({

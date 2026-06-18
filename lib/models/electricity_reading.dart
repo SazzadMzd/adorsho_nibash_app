@@ -1,3 +1,5 @@
+import 'model_helpers.dart';
+
 class ElectricityReading {
   final String id;
   final String flatId;
@@ -46,6 +48,6 @@ class ElectricityReading {
         unitsUsed: (map['unitsUsed'] ?? 0).toDouble(),
         billAmount: (map['billAmount'] ?? 0).toDouble(),
         unitRate: unitRate,
-        createdAt: (map['createdAt'] as DateTime?) ?? DateTime.now(),
+        createdAt: timestampToDateTime(map['createdAt']) ?? DateTime.now(),
       );
 }

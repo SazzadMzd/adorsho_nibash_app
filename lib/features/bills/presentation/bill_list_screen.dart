@@ -9,6 +9,8 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../payments/presentation/collect_payment_screen.dart';
+import 'bill_form_screen.dart';
+import 'bill_generation_screen.dart';
 
 class BillListScreen extends ConsumerStatefulWidget {
   final String? initialFilter;
@@ -35,6 +37,14 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
       appBar: AppBar(
         title: const Text(AppStrings.bills),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: AppStrings.generateBills,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BillGenerationScreen()),
+            ),
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (v) => setState(() => _selectedFilter = v),
@@ -77,11 +87,18 @@ class _BillCard extends StatelessWidget {
   final Bill bill;
   const _BillCard({required this.bill});
 
+  void _openDetail(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => BillFormScreen(bill: bill)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        onTap: () {},
+        onTap: () => _openDetail(context),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),

@@ -47,6 +47,9 @@ class FirestoreService {
       _bills.where('status', isEqualTo: 'pending').snapshots();
   Stream<QuerySnapshot<Map<String, dynamic>>> getAllBills() =>
       _bills.orderBy('month', descending: true).snapshots();
+  Future<void> deleteBill(String id) => _bills.doc(id).delete();
+  Future<DocumentSnapshot<Map<String, dynamic>>> getBill(String id) =>
+      _bills.doc(id).get();
 
   Future<QuerySnapshot<Map<String, dynamic>>> getMonthBillsSnapshot(
     String month,
@@ -58,8 +61,13 @@ class FirestoreService {
 
   Future<DocumentReference> addPayment(Payment payment) =>
       _payments.add(payment.toMap());
+  Future<void> updatePayment(String id, Payment payment) =>
+      _payments.doc(id).update(payment.toMap());
+  Future<void> deletePayment(String id) => _payments.doc(id).delete();
   Stream<QuerySnapshot<Map<String, dynamic>>> getPaymentsByBill(String billId) =>
-      _payments.where('billId', isEqualTo: billId).orderBy('date').snapshots();
+      _payments.where('billId', isEqualTo: billId).snapshots();
+  Future<DocumentSnapshot<Map<String, dynamic>>> getPayment(String id) =>
+      _payments.doc(id).get();
 
   // Electricity Readings
   CollectionReference<Map<String, dynamic>> get _readings =>
@@ -69,6 +77,7 @@ class FirestoreService {
       _readings.add(reading.toMap());
   Future<void> updateReading(String id, ElectricityReading reading) =>
       _readings.doc(id).update(reading.toMap());
+  Future<void> deleteReading(String id) => _readings.doc(id).delete();
   Stream<QuerySnapshot<Map<String, dynamic>>> getReadingsByFlat(String flatId) =>
       _readings.where('flatId', isEqualTo: flatId).orderBy('month', descending: true).snapshots();
 
@@ -81,6 +90,11 @@ class FirestoreService {
           .limit(1)
           .get()
           .then((snap) => snap.docs.isNotEmpty ? snap.docs.first : null);
+
+  Future<QuerySnapshot<Map<String, dynamic>>> getReadingsByMonth(
+    String month,
+  ) =>
+      _readings.where('month', isEqualTo: month).get();
 
   // Security Transactions
   CollectionReference<Map<String, dynamic>> get _securityTransactions =>

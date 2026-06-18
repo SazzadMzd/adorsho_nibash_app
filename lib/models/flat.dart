@@ -1,3 +1,5 @@
+import 'model_helpers.dart';
+
 class Flat {
   final String id;
   final String flatNo;
@@ -51,7 +53,7 @@ class Flat {
     meterNo: map['meterNo'] ?? '',
     unitRate: (map['unitRate'] ?? 0).toDouble(),
     isActive: map['isActive'] ?? true,
-    createdAt: (map['createdAt'] as DateTime?) ?? DateTime.now(),
+    createdAt: timestampToDateTime(map['createdAt']) ?? DateTime.now(),
   );
 
   Flat copyWith({

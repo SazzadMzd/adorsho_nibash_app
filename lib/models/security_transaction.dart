@@ -1,3 +1,5 @@
+import 'model_helpers.dart';
+
 class SecurityTransaction {
   final String id;
   final String tenantId;
@@ -32,8 +34,8 @@ class SecurityTransaction {
         tenantId: map['tenantId'] ?? '',
         type: map['type'] ?? 'deposit',
         amount: (map['amount'] ?? 0).toDouble(),
-        date: (map['date'] as DateTime?) ?? DateTime.now(),
+        date: timestampToDateTime(map['date']) ?? DateTime.now(),
         note: map['note'] ?? '',
-        createdAt: (map['createdAt'] as DateTime?) ?? DateTime.now(),
+        createdAt: timestampToDateTime(map['createdAt']) ?? DateTime.now(),
       );
 }

@@ -58,7 +58,7 @@ class AppStrings {
   static const String editTenant = 'ভাড়াটিয়া সম্পাদনা';
   static const String tenantName = 'নাম';
   static const String phone = 'মোবাইল নম্বর';
-  static const String whatsapp = 'হোয়াটসঅ্যাপ নম্বর';
+  static const String nid = 'জাতীয় পরিচয়পত্র (NID)';
   static const String selectFlat = 'ফ্ল্যাট নির্বাচন';
   static const String joinDate = 'প্রবেশের তারিখ';
   static const String securityDeposit = 'জামানত';

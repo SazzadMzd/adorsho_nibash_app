@@ -1,8 +1,10 @@
+import 'model_helpers.dart';
+
 class Tenant {
   final String id;
   final String name;
   final String phone;
-  final String whatsapp;
+  final String nid;
   final String flatId;
   final DateTime joinedAt;
   final DateTime? leftAt;
@@ -13,7 +15,7 @@ class Tenant {
     required this.id,
     required this.name,
     this.phone = '',
-    this.whatsapp = '',
+    this.nid = '',
     required this.flatId,
     required this.joinedAt,
     this.leftAt,
@@ -26,7 +28,7 @@ class Tenant {
   Map<String, dynamic> toMap() => {
     'name': name,
     'phone': phone,
-    'whatsapp': whatsapp,
+    'nid': nid,
     'flatId': flatId,
     'joinedAt': joinedAt,
     'leftAt': leftAt,
@@ -38,10 +40,10 @@ class Tenant {
     id: id,
     name: map['name'] ?? '',
     phone: map['phone'] ?? '',
-    whatsapp: map['whatsapp'] ?? '',
+    nid: map['nid'] ?? '',
     flatId: map['flatId'] ?? '',
-    joinedAt: (map['joinedAt'] as DateTime?) ?? DateTime.now(),
-    leftAt: map['leftAt'] as DateTime?,
+    joinedAt: timestampToDateTime(map['joinedAt']) ?? DateTime.now(),
+    leftAt: timestampToDateTime(map['leftAt']),
     securityDeposit: (map['securityDeposit'] ?? 0).toDouble(),
     status: map['status'] ?? 'active',
   );
@@ -50,7 +52,7 @@ class Tenant {
     String? id,
     String? name,
     String? phone,
-    String? whatsapp,
+    String? nid,
     String? flatId,
     DateTime? joinedAt,
     DateTime? leftAt,
@@ -60,7 +62,7 @@ class Tenant {
     id: id ?? this.id,
     name: name ?? this.name,
     phone: phone ?? this.phone,
-    whatsapp: whatsapp ?? this.whatsapp,
+    nid: nid ?? this.nid,
     flatId: flatId ?? this.flatId,
     joinedAt: joinedAt ?? this.joinedAt,
     leftAt: leftAt ?? this.leftAt,

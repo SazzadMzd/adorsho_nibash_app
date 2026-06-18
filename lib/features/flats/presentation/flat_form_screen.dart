@@ -24,6 +24,7 @@ class _FlatFormScreenState extends ConsumerState<FlatFormScreen> {
   late final TextEditingController _meterController;
   late final TextEditingController _unitRateController;
   bool _isLoading = false;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -206,10 +207,64 @@ class _FlatFormScreenState extends ConsumerState<FlatFormScreen> {
                       : Text(isEdit ? AppStrings.save : AppStrings.addFlat),
                 ),
               ),
+              if (isEdit) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: _isDeleting ? null : _confirmDelete,
+                    icon: _isDeleting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.delete, color: AppColors.error),
+                    label: Text(AppStrings.delete,
+                        style: const TextStyle(color: AppColors.error)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.error),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('নিশ্চিত করুন'),
+        content: const Text('আপনি কি এই ফ্ল্যাটটি মুছতে চান?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text(AppStrings.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(AppStrings.delete)),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await ref.read(firestoreServiceProvider).deleteFlat(widget.flat!.id);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ত্রুটি: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
   }
 }

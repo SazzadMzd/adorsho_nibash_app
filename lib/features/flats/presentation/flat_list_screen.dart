@@ -41,7 +41,15 @@ class FlatListScreen extends ConsumerWidget {
           }
           return ListView.builder(
             itemCount: flats.length,
-            itemBuilder: (_, i) => _FlatCard(flat: flats[i]),
+            itemBuilder: (_, i) => _FlatCard(
+              flat: flats[i],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FlatFormScreen(flat: flats[i]),
+                ),
+              ),
+            ),
           );
         },
       ),
@@ -51,7 +59,9 @@ class FlatListScreen extends ConsumerWidget {
 
 class _FlatCard extends StatelessWidget {
   final Flat flat;
-  const _FlatCard({required this.flat});
+  final VoidCallback onTap;
+
+  const _FlatCard({required this.flat, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +81,7 @@ class _FlatCard extends StatelessWidget {
         trailing: flat.isActive
             ? const Icon(Icons.check_circle, color: AppColors.paidColor, size: 20)
             : const Icon(Icons.cancel, color: AppColors.pendingColor, size: 20),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }

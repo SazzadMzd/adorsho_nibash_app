@@ -1,3 +1,5 @@
+import 'model_helpers.dart';
+
 class Bill {
   final String id;
   final String tenantId;
@@ -69,7 +71,7 @@ class Bill {
     total: (map['total'] ?? 0).toDouble(),
     paidAmount: (map['paidAmount'] ?? 0).toDouble(),
     status: map['status'] ?? 'pending',
-    createdAt: (map['createdAt'] as DateTime?) ?? DateTime.now(),
+    createdAt: timestampToDateTime(map['createdAt']) ?? DateTime.now(),
   );
 
   Bill copyWith({
