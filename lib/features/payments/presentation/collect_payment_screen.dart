@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/bill.dart';
+import '../../../models/flat.dart';
+import '../../../models/tenant.dart';
 import '../../../models/payment.dart';
 import '../../../shared/providers.dart';
 import '../../../services/bill_generator.dart';
@@ -24,6 +26,8 @@ class _CollectPaymentScreenState extends ConsumerState<CollectPaymentScreen> {
   DateTime _paymentDate = DateTime.now();
   bool _isLoading = false;
   Bill? _selectedBill;
+  Tenant? _tenant;
+  Flat? _flat;
 
   @override
   void initState() {
@@ -31,7 +35,27 @@ class _CollectPaymentScreenState extends ConsumerState<CollectPaymentScreen> {
     _selectedBill = widget.bill;
     if (_selectedBill != null) {
       _amountController.text = _selectedBill!.due.toStringAsFixed(0);
+      _loadRelatedData();
     }
+  }
+
+  Future<void> _loadRelatedData() async {
+    if (_selectedBill == null) return;
+    final service = ref.read(firestoreServiceProvider);
+    try {
+      final tenantSnap = await service.getTenantDoc(_selectedBill!.tenantId);
+      final flatSnap = await service.getFlatDoc(_selectedBill!.flatId);
+      if (mounted) {
+        setState(() {
+          _tenant = tenantSnap.exists
+              ? Tenant.fromMap(tenantSnap.id, tenantSnap.data()!)
+              : null;
+          _flat = flatSnap.exists
+              ? Flat.fromMap(flatSnap.id, flatSnap.data()!)
+              : null;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -114,6 +138,31 @@ class _CollectPaymentScreenState extends ConsumerState<CollectPaymentScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (_tenant != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.person, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text(_tenant!.name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              ],
+                            ),
+                          ),
+                        if (_flat != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.apartment, size: 16, color: AppColors.accent),
+                                const SizedBox(width: 6),
+                                Text(_flat!.floor.isNotEmpty
+                                    ? '${_flat!.floor} - ${_flat!.flatNo}'
+                                    : _flat!.flatNo),
+                              ],
+                            ),
+                          ),
                         Text(
                           'বিল: ${BillGenerator.formatMonth(_selectedBill!.month)}',
                           style: const TextStyle(fontWeight: FontWeight.bold),

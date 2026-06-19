@@ -18,6 +18,8 @@ class FirestoreService {
   Stream<QuerySnapshot<Map<String, dynamic>>> getFlats() => _flats
       .orderBy('flatNo')
       .snapshots();
+  Future<DocumentSnapshot<Map<String, dynamic>>> getFlatDoc(String id) =>
+      _flats.doc(id).get();
 
   // Tenants
   CollectionReference<Map<String, dynamic>> get _tenants => _db.collection('tenants');
@@ -33,6 +35,8 @@ class FirestoreService {
   Stream<QuerySnapshot<Map<String, dynamic>>> getAllTenants() => _tenants
       .orderBy('name')
       .snapshots();
+  Future<DocumentSnapshot<Map<String, dynamic>>> getTenantDoc(String id) =>
+      _tenants.doc(id).get();
 
   // Bills
   CollectionReference<Map<String, dynamic>> get _bills => _db.collection('bills');
@@ -121,6 +125,13 @@ class FirestoreService {
 
   Future<void> updateSettings(Map<String, dynamic> data) =>
       _settings.doc('app_settings').set(data, SetOptions(merge: true));
+
+  // Users
+  Future<DocumentSnapshot<Map<String, dynamic>>> getUser(String uid) =>
+      _db.collection('users').doc(uid).get();
+
+  Future<void> setUser(String uid, Map<String, dynamic> data) =>
+      _db.collection('users').doc(uid).set(data, SetOptions(merge: true));
 
   // Auto-generate bills
   Future<void> generateBillsForMonth(

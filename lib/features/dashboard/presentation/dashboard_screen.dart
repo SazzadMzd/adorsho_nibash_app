@@ -308,9 +308,14 @@ class _QuickActions extends StatelessWidget {
                 icon: Icons.receipt,
                 label: AppStrings.quickReceipt,
                 color: AppColors.info,
-                onTap: () {
-                  // TODO: Navigate to recent receipts
-                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const BillListScreen(
+                      initialFilter: 'paid',
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 8),

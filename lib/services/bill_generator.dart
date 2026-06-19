@@ -51,6 +51,7 @@ class BillGenerator {
     List<Tenant> tenants,
     Map<String, Flat> flatMap, [
     Map<String, ElectricityReading>? readingsByFlatId,
+    Map<String, Bill>? prevBillsByFlatId,
   ]) {
     return tenants
         .where((t) => t.isActive)
@@ -59,9 +60,17 @@ class BillGenerator {
           if (flat == null) return null;
 
           double electricity = 0;
+          double prevReading = 0;
+
           final reading = readingsByFlatId?[tenant.flatId];
           if (reading != null) {
             electricity = reading.billAmount;
+            prevReading = reading.previousReading;
+          }
+
+          final prevBill = prevBillsByFlatId?[tenant.flatId];
+          if (prevBill != null && reading == null) {
+            prevReading = prevBill.currentMeterReading;
           }
 
           return Bill(
@@ -74,6 +83,7 @@ class BillGenerator {
             water: flat.water,
             garage: flat.garage,
             electricity: electricity,
+            prevMeterReading: prevReading,
             status: 'pending',
           );
         })

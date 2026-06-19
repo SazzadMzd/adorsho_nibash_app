@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/bill.dart';
@@ -7,6 +8,7 @@ import '../../../models/payment.dart';
 import '../../../models/flat.dart';
 import '../../../models/tenant.dart';
 import '../../../services/bill_generator.dart';
+import '../../../services/export_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../payments/presentation/collect_payment_screen.dart';
@@ -25,12 +27,14 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   late TextEditingController _waterController;
   late TextEditingController _garageController;
   late TextEditingController _electricityController;
+  late TextEditingController _currentReadingController;
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
   bool _isDeleting = false;
   List<Payment> _payments = [];
   Tenant? _tenant;
   Flat? _flat;
+  double _prevReading = 0;
 
   @override
   void initState() {
@@ -40,31 +44,36 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     _waterController = TextEditingController(text: widget.bill.water.toStringAsFixed(0));
     _garageController = TextEditingController(text: widget.bill.garage.toStringAsFixed(0));
     _electricityController = TextEditingController(text: widget.bill.electricity.toStringAsFixed(0));
+    _currentReadingController = TextEditingController(
+      text: widget.bill.currentMeterReading > 0 ? widget.bill.currentMeterReading.toStringAsFixed(0) : '',
+    );
+    _prevReading = widget.bill.prevMeterReading;
     _loadData();
   }
 
   Future<void> _loadData() async {
     final service = ref.read(firestoreServiceProvider);
-    final tenants = await service.getAllTenants().first;
-    final flats = await service.getFlats().first;
     final paymentsSnap = await service.getPaymentsByBill(widget.bill.id).first;
 
-    final t = tenants.docs
-        .map((d) => Tenant.fromMap(d.id, d.data()))
-        .where((t) => t.id == widget.bill.tenantId)
-        .firstOrNull;
-    final f = flats.docs
-        .map((d) => Flat.fromMap(d.id, d.data()))
-        .where((f) => f.id == widget.bill.flatId)
-        .firstOrNull;
+    DocumentSnapshot<Map<String, dynamic>>? tenantSnap;
+    DocumentSnapshot<Map<String, dynamic>>? flatSnap;
+    try {
+      tenantSnap = await service.getTenantDoc(widget.bill.tenantId);
+      flatSnap = await service.getFlatDoc(widget.bill.flatId);
+    } catch (_) {}
+
     final p = paymentsSnap.docs
         .map((d) => Payment.fromMap(d.id, d.data()))
         .toList();
 
     if (mounted) {
       setState(() {
-        _tenant = t;
-        _flat = f;
+        _tenant = tenantSnap?.exists == true
+            ? Tenant.fromMap(tenantSnap!.id, tenantSnap.data()!)
+            : null;
+        _flat = flatSnap?.exists == true
+            ? Flat.fromMap(flatSnap!.id, flatSnap.data()!)
+            : null;
         _payments = p;
       });
     }
@@ -77,7 +86,23 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     _waterController.dispose();
     _garageController.dispose();
     _electricityController.dispose();
+    _currentReadingController.dispose();
     super.dispose();
+  }
+
+  double get _calculatedElectricity {
+    final current = double.tryParse(_currentReadingController.text.trim()) ?? 0;
+    if (current > _prevReading && _flat != null) {
+      return (current - _prevReading) * _flat!.unitRate;
+    }
+    return double.parse(_electricityController.text.trim());
+  }
+
+  String get _flatLabel {
+    if (_flat == null) return '';
+    final f = _flat!;
+    if (f.floor.isNotEmpty) return '${f.floor} - ${f.flatNo}';
+    return f.flatNo;
   }
 
   Future<void> _save() async {
@@ -85,6 +110,14 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     setState(() => _isSaving = true);
 
     try {
+      final currentReading = double.tryParse(_currentReadingController.text.trim()) ?? 0;
+      double electricity;
+      if (currentReading > _prevReading && _flat != null && _flat!.unitRate > 0) {
+        electricity = (currentReading - _prevReading) * _flat!.unitRate;
+      } else {
+        electricity = double.parse(_electricityController.text.trim());
+      }
+
       final updated = Bill(
         id: widget.bill.id,
         tenantId: widget.bill.tenantId,
@@ -94,7 +127,9 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         gas: double.parse(_gasController.text.trim()),
         water: double.parse(_waterController.text.trim()),
         garage: double.parse(_garageController.text.trim()),
-        electricity: double.parse(_electricityController.text.trim()),
+        electricity: electricity,
+        prevMeterReading: _prevReading,
+        currentMeterReading: currentReading,
         status: widget.bill.status,
         paidAmount: widget.bill.paidAmount,
       );
@@ -192,16 +227,53 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     }
   }
 
+  Future<void> _shareReceipt() async {
+    final bill = widget.bill;
+    if (bill.isPending) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('শুধুমাত্র পরিশোধিত বিলের রসিদ শেয়ার করা যাবে'), backgroundColor: AppColors.warning),
+      );
+      return;
+    }
+
+    final pdf = await ExportService.generateReceiptPdf(
+      tenantName: _tenant?.name ?? '',
+      flatNo: _flatLabel,
+      month: BillGenerator.formatMonth(bill.month),
+      items: [
+        MapEntry(AppStrings.rent, bill.rent),
+        MapEntry(AppStrings.gas, bill.gas),
+        MapEntry(AppStrings.water, bill.water),
+        MapEntry(AppStrings.garage, bill.garage),
+        MapEntry(AppStrings.electricity, bill.electricity),
+      ],
+      total: bill.total,
+      paid: bill.paidAmount,
+      method: '',
+      receiptNo: '${bill.month}-${bill.flatId.length > 4 ? bill.flatId.substring(0, 4) : bill.flatId}',
+      date: DateTime.now().toString().substring(0, 10),
+    );
+
+    await ExportService.shareFile(pdf, 'receipt_${bill.id}.pdf');
+  }
+
   @override
   Widget build(BuildContext context) {
     final bill = widget.bill;
-    final authUser = ref.read(authServiceProvider).currentUser;
-    final signatureName = authUser?.displayName ?? authUser?.email ?? 'Unknown';
+    final auth = ref.read(authServiceProvider);
+    final signatureName = auth.userName ?? 'ব্যবহারকারী';
+    final showSignature = bill.isPaid || bill.isPartial;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('${AppStrings.billDetails}: ${BillGenerator.formatMonth(bill.month)}'),
         actions: [
+          if (showSignature)
+            IconButton(
+              icon: const Icon(Icons.share, color: Colors.green),
+              tooltip: AppStrings.shareReceipt,
+              onPressed: _shareReceipt,
+            ),
           IconButton(
             icon: const Icon(Icons.delete, color: AppColors.error),
             onPressed: _isDeleting ? null : _deleteBill,
@@ -209,58 +281,82 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              // Header: App name + flat floor-room
+              // Header: Floor-Flat + Month + Tenant + Status
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     children: [
-                      Text(AppStrings.appName,
+                      Text(_flatLabel,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold, color: AppColors.primary)),
-                      const SizedBox(height: 12),
-                      if (_flat != null)
-                        Text('${AppStrings.floor}: ${_flat!.floor}  |  ${AppStrings.flatNo}: ${_flat!.flatNo}',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(BillGenerator.formatMonth(bill.month),
                           style: Theme.of(context).textTheme.titleMedium),
+                      if (_tenant != null) ...[
+                        const SizedBox(height: 4),
+                        Text(_tenant!.name,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      ],
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: StatusBadge(status: bill.status),
+                      ),
+                      // Meter readings
+                      if (_flat != null && _flat!.unitRate > 0) ...[
+                        const Divider(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text('পূর্ববর্তী রিডিং: ${_prevReading.toStringAsFixed(0)}',
+                                  style: const TextStyle(fontSize: 13)),
+                            ),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _currentReadingController,
+                                decoration: const InputDecoration(
+                                  labelText: AppStrings.currentReading,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                ),
+                                keyboardType: TextInputType.number,
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_currentReadingController.text.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.bolt, size: 16, color: AppColors.warning),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${AppStrings.electricity}: ৳${_calculatedElectricity.toStringAsFixed(0)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-
-              // Tenant info
-              if (_tenant != null)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(child: Icon(Icons.person)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_tenant!.name,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                              if (_tenant!.phone.isNotEmpty) Text('${AppStrings.phone}: ${_tenant!.phone}'),
-                              if (_tenant!.nid.isNotEmpty) Text('${AppStrings.nid}: ${_tenant!.nid}'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
 
               // Bill breakdown table
               Card(
@@ -269,29 +365,27 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                   child: Column(
                     children: [
                       _BillRow(label: AppStrings.rent, amount: bill.rent),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.gas, amount: bill.gas),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.water, amount: bill.water),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.garage, amount: bill.garage),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.electricity, amount: bill.electricity),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.total, amount: bill.total,
                           isBold: true, color: AppColors.textPrimary),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.paidAmount, amount: bill.paidAmount,
                           color: AppColors.paidColor),
-                      const Divider(height: 12),
+                      const Divider(height: 10),
                       _BillRow(label: AppStrings.due, amount: bill.due,
                           isBold: true, color: AppColors.pendingColor),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Align(alignment: Alignment.centerRight, child: StatusBadge(status: bill.status)),
               const SizedBox(height: 16),
 
               // Edit amounts section
@@ -359,32 +453,33 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                         ),
                       ),
                     ))),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // Electronic signature
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: AppColors.divider)),
+              // Electronic signature (only when paid/partial)
+              if (showSignature)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: AppColors.divider)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ইলেকট্রনিক স্বাক্ষর',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.edit_note, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Text(signatureName,
+                              style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('ইলেকট্রনিক স্বাক্ষর',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.edit_note, size: 18, color: AppColors.primary),
-                        const SizedBox(width: 6),
-                        Text(signatureName,
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 32),
             ],
           ),

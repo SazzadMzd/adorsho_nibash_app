@@ -175,6 +175,8 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
       if (billDoc != null) {
         await service.updateBill(billDoc.id, billDoc.bill.copyWith(
           electricity: _electricityCost,
+          prevMeterReading: _previousReading,
+          currentMeterReading: double.parse(_currentReadingController.text.trim()),
         ));
       }
 

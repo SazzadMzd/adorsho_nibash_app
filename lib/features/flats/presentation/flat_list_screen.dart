@@ -76,7 +76,10 @@ class _FlatCard extends StatelessWidget {
             color: flat.isActive ? AppColors.primary : AppColors.textHint,
           ),
         ),
-        title: Text(flat.flatNo, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          flat.floor.isNotEmpty ? '${flat.floor} - ${flat.flatNo}' : flat.flatNo,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: Text('${AppStrings.monthlyRent}: ৳${flat.rent.toStringAsFixed(0)}'),
         trailing: flat.isActive
             ? const Icon(Icons.check_circle, color: AppColors.paidColor, size: 20)
