@@ -16,7 +16,11 @@ import '../../payments/presentation/collect_payment_screen.dart';
 class BillFormScreen extends ConsumerStatefulWidget {
   final Bill bill;
   final bool updateOnly;
-  const BillFormScreen({super.key, required this.bill, this.updateOnly = false});
+  const BillFormScreen({
+    super.key,
+    required this.bill,
+    this.updateOnly = false,
+  });
 
   @override
   ConsumerState<BillFormScreen> createState() => _BillFormScreenState();
@@ -41,16 +45,30 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   @override
   void initState() {
     super.initState();
-    _rentController = TextEditingController(text: widget.bill.rent.toStringAsFixed(0));
-    _gasController = TextEditingController(text: widget.bill.gas.toStringAsFixed(0));
-    _waterController = TextEditingController(text: widget.bill.water.toStringAsFixed(0));
-    _garageController = TextEditingController(text: widget.bill.garage.toStringAsFixed(0));
-    _electricityController = TextEditingController(text: widget.bill.electricity.toStringAsFixed(0));
+    _rentController = TextEditingController(
+      text: widget.bill.rent.toStringAsFixed(0),
+    );
+    _gasController = TextEditingController(
+      text: widget.bill.gas.toStringAsFixed(0),
+    );
+    _waterController = TextEditingController(
+      text: widget.bill.water.toStringAsFixed(0),
+    );
+    _garageController = TextEditingController(
+      text: widget.bill.garage.toStringAsFixed(0),
+    );
+    _electricityController = TextEditingController(
+      text: widget.bill.electricity.toStringAsFixed(0),
+    );
     _previousReadingController = TextEditingController(
-      text: widget.bill.prevMeterReading > 0 ? widget.bill.prevMeterReading.toStringAsFixed(0) : '',
+      text: widget.bill.prevMeterReading > 0
+          ? widget.bill.prevMeterReading.toStringAsFixed(0)
+          : '',
     );
     _currentReadingController = TextEditingController(
-      text: widget.bill.currentMeterReading > 0 ? widget.bill.currentMeterReading.toStringAsFixed(0) : '',
+      text: widget.bill.currentMeterReading > 0
+          ? widget.bill.currentMeterReading.toStringAsFixed(0)
+          : '',
     );
     _prevReading = widget.bill.prevMeterReading;
     _loadData();
@@ -75,7 +93,9 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     if (previousReading <= 0) {
       try {
         final previousMonth = BillGenerator.previousMonth(widget.bill.month);
-        final prevBillsSnap = await service.getMonthBillsSnapshot(previousMonth);
+        final prevBillsSnap = await service.getMonthBillsSnapshot(
+          previousMonth,
+        );
         final prevBill = prevBillsSnap.docs
             .map((d) => Bill.fromMap(d.id, d.data()))
             .where((b) => b.flatId == widget.bill.flatId)
@@ -94,7 +114,8 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
             : null;
         _payments = p;
         _prevReading = previousReading;
-        if (_previousReadingController.text.trim().isEmpty && previousReading > 0) {
+        if (_previousReadingController.text.trim().isEmpty &&
+            previousReading > 0) {
           _previousReadingController.text = previousReading.toStringAsFixed(0);
         }
       });
@@ -113,17 +134,23 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     super.dispose();
   }
 
-  double get _liveRent => double.tryParse(_rentController.text.trim()) ?? widget.bill.rent;
-  double get _liveGas => double.tryParse(_gasController.text.trim()) ?? widget.bill.gas;
-  double get _liveWater => double.tryParse(_waterController.text.trim()) ?? widget.bill.water;
-  double get _liveGarage => double.tryParse(_garageController.text.trim()) ?? widget.bill.garage;
+  double get _liveRent =>
+      double.tryParse(_rentController.text.trim()) ?? widget.bill.rent;
+  double get _liveGas =>
+      double.tryParse(_gasController.text.trim()) ?? widget.bill.gas;
+  double get _liveWater =>
+      double.tryParse(_waterController.text.trim()) ?? widget.bill.water;
+  double get _liveGarage =>
+      double.tryParse(_garageController.text.trim()) ?? widget.bill.garage;
 
   double get _livePreviousReading {
-    return double.tryParse(_previousReadingController.text.trim()) ?? _prevReading;
+    return double.tryParse(_previousReadingController.text.trim()) ??
+        _prevReading;
   }
 
   double get _liveCurrentReading {
-    return double.tryParse(_currentReadingController.text.trim()) ?? widget.bill.currentMeterReading;
+    return double.tryParse(_currentReadingController.text.trim()) ??
+        widget.bill.currentMeterReading;
   }
 
   double get _liveElectricity {
@@ -135,7 +162,8 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     return double.parse(_electricityController.text.trim());
   }
 
-  double get _liveTotal => _liveRent + _liveGas + _liveWater + _liveGarage + _liveElectricity;
+  double get _liveTotal =>
+      _liveRent + _liveGas + _liveWater + _liveGarage + _liveElectricity;
 
   String get _flatLabel {
     if (_flat == null) return '';
@@ -149,10 +177,15 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final previousReading = double.tryParse(_previousReadingController.text.trim()) ?? _prevReading;
-      final currentReading = double.tryParse(_currentReadingController.text.trim()) ?? 0;
+      final previousReading =
+          double.tryParse(_previousReadingController.text.trim()) ??
+          _prevReading;
+      final currentReading =
+          double.tryParse(_currentReadingController.text.trim()) ?? 0;
       double electricity;
-      if (currentReading > previousReading && _flat != null && _flat!.unitRate > 0) {
+      if (currentReading > previousReading &&
+          _flat != null &&
+          _flat!.unitRate > 0) {
         electricity = (currentReading - previousReading) * _flat!.unitRate;
       } else {
         electricity = double.parse(_electricityController.text.trim());
@@ -174,21 +207,29 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         paidAmount: widget.bill.paidAmount,
       );
 
-      await ref.read(firestoreServiceProvider).updateBill(widget.bill.id, updated);
+      await ref
+          .read(firestoreServiceProvider)
+          .updateBill(widget.bill.id, updated);
 
       if (mounted) {
         if (widget.updateOnly) {
           Navigator.pop(context, true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('বিল আপডেট করা হয়েছে'), backgroundColor: AppColors.success),
+            const SnackBar(
+              content: Text('বিল আপডেট করা হয়েছে'),
+              backgroundColor: AppColors.success,
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ত্রুটি: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('ত্রুটি: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -203,8 +244,14 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         title: const Text('নিশ্চিত করুন'),
         content: const Text('আপনি কি এই বিলটি মুছতে চান?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(AppStrings.cancel)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text(AppStrings.delete)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(AppStrings.delete),
+          ),
         ],
       ),
     );
@@ -215,14 +262,20 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       await ref.read(firestoreServiceProvider).deleteBill(widget.bill.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('বিল মুছে ফেলা হয়েছে'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('বিল মুছে ফেলা হয়েছে'),
+            backgroundColor: AppColors.success,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ত্রুটি: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('ত্রুটি: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -237,8 +290,14 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         title: const Text('নিশ্চিত করুন'),
         content: const Text('আপনি কি এই পেমেন্টটি মুছতে চান?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(AppStrings.cancel)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text(AppStrings.delete)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(AppStrings.delete),
+          ),
         ],
       ),
     );
@@ -249,7 +308,9 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       await service.deletePayment(payment.id);
 
       final newPaid = widget.bill.paidAmount - payment.amount;
-      final newStatus = newPaid <= 0 ? 'pending' : (newPaid >= widget.bill.total ? 'paid' : 'partial');
+      final newStatus = newPaid <= 0
+          ? 'pending'
+          : (newPaid >= widget.bill.total ? 'paid' : 'partial');
       final safePaid = newPaid < 0 ? 0 : newPaid;
       await service.updateBillPartial(widget.bill.id, {
         'paidAmount': safePaid,
@@ -259,13 +320,19 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       _loadData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('পেমেন্ট মুছে ফেলা হয়েছে'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('পেমেন্ট মুছে ফেলা হয়েছে'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ত্রুটি: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('ত্রুটি: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -275,30 +342,49 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     final bill = widget.bill;
     if (bill.isPending) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('শুধুমাত্র পরিশোধিত বিলের রসিদ শেয়ার করা যাবে'), backgroundColor: AppColors.warning),
+        const SnackBar(
+          content: Text('শুধুমাত্র পরিশোধিত বিলের রসিদ শেয়ার করা যাবে'),
+          backgroundColor: AppColors.warning,
+        ),
       );
       return;
     }
 
-    final pdf = await ExportService.generateReceiptPdf(
-      tenantName: _tenant?.name ?? '',
-      flatNo: _flatLabel,
-      month: BillGenerator.formatMonth(bill.month),
-      items: [
-        MapEntry(AppStrings.rent, bill.rent),
-        MapEntry(AppStrings.gas, bill.gas),
-        MapEntry(AppStrings.water, bill.water),
-        MapEntry(AppStrings.garage, bill.garage),
-        MapEntry(AppStrings.electricity, bill.electricity),
-      ],
-      total: bill.total,
-      paid: bill.paidAmount,
-      method: '',
-      receiptNo: '${bill.month}-${bill.flatId.length > 4 ? bill.flatId.substring(0, 4) : bill.flatId}',
-      date: DateTime.now().toString().substring(0, 10),
-    );
+    try {
+      final pdf = await ExportService.generateReceiptPdf(
+        tenantName: _tenant?.name ?? '',
+        flatNo: _flatLabel,
+        month: BillGenerator.formatMonth(bill.month),
+        items: [
+          MapEntry(AppStrings.rent, bill.rent),
+          MapEntry(AppStrings.gas, bill.gas),
+          MapEntry(AppStrings.water, bill.water),
+          MapEntry(AppStrings.garage, bill.garage),
+          MapEntry(AppStrings.electricity, bill.electricity),
+        ],
+        total: bill.total,
+        paid: bill.paidAmount,
+        method: '',
+        date: DateTime.now().toString().substring(0, 10),
+        prevReadingLabel: _livePreviousReading > 0
+            ? _livePreviousReading.toStringAsFixed(0)
+            : '',
+        currentReadingLabel: _liveCurrentReading > 0
+            ? _liveCurrentReading.toStringAsFixed(0)
+            : '',
+      );
 
-    await ExportService.shareFile(pdf, 'receipt_${bill.id}.pdf');
+      await ExportService.shareFile(pdf, 'receipt_${bill.id}.pdf');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('রসিদ শেয়ার করা যায়নি: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -344,7 +430,8 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                       Center(
                         child: Text(
                           _flatLabel,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
                               ),
@@ -362,7 +449,10 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                         Center(
                           child: Text(
                             _tenant!.name,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -410,44 +500,83 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                         controller: _electricityController,
                         onChanged: (_) => setState(() {}),
                       ),
-                      const SizedBox(height: 8),
-                      _AmountField(
-                        label: AppStrings.prevReading,
-                        controller: _previousReadingController,
-                        prefixText: '',
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      const SizedBox(height: 8),
-                      _AmountField(
-                        label: AppStrings.currentReading,
-                        controller: _currentReadingController,
-                        prefixText: '',
-                        onChanged: (_) => setState(() {}),
-                      ),
                       if (_flat != null && _flat!.unitRate > 0) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Container(
                           width: double.infinity,
+                          margin: const EdgeInsets.only(left: 12),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLight.withValues(alpha: 0.08),
+                            color: AppColors.primaryLight.withValues(
+                              alpha: 0.06,
+                            ),
                             borderRadius: BorderRadius.circular(10),
+                            border: Border(
+                              left: BorderSide(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.35,
+                                ),
+                                width: 3,
+                              ),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${AppStrings.electricity}: ৳${_liveElectricity.toStringAsFixed(0)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                AppStrings.electricityReading,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${AppStrings.total}: ৳${_liveTotal.toStringAsFixed(0)}',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              const SizedBox(height: 8),
+                              _AmountField(
+                                label: AppStrings.prevReading,
+                                controller: _previousReadingController,
+                                prefixText: '',
+                                onChanged: (_) => setState(() {}),
                               ),
-                              Text(
-                                '${AppStrings.due}: ৳${(_liveTotal - bill.paidAmount).toStringAsFixed(0)}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.pendingColor),
+                              const SizedBox(height: 8),
+                              _AmountField(
+                                label: AppStrings.currentReading,
+                                controller: _currentReadingController,
+                                prefixText: '',
+                                onChanged: (_) => setState(() {}),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${AppStrings.electricity}: ৳${_liveElectricity.toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${AppStrings.total}: ৳${_liveTotal.toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${AppStrings.due}: ৳${(_liveTotal - bill.paidAmount).toStringAsFixed(0)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.pendingColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -460,7 +589,10 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                         child: ElevatedButton(
                           onPressed: _isSaving ? null : _save,
                           child: _isSaving
-                              ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                )
                               : const Text(AppStrings.save),
                         ),
                       ),
@@ -483,7 +615,10 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                         const Divider(height: 10),
                         _BillRow(label: AppStrings.garage, amount: bill.garage),
                         const Divider(height: 10),
-                        _BillRow(label: AppStrings.electricity, amount: _liveElectricity),
+                        _BillRow(
+                          label: AppStrings.electricity,
+                          amount: _liveElectricity,
+                        ),
                         const Divider(height: 10),
                         _BillRow(
                           label: AppStrings.total,
@@ -512,14 +647,22 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('পেমেন্ট', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      'পেমেন্ট',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     TextButton.icon(
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text(AppStrings.collectPayment),
                       onPressed: () async {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => CollectPaymentScreen(bill: bill)),
+                          MaterialPageRoute(
+                            builder: (_) => CollectPaymentScreen(bill: bill),
+                          ),
                         );
                         _loadData();
                       },
@@ -529,20 +672,31 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                 if (_payments.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(16),
-                    child: Text('কোনো পেমেন্ট নেই', style: TextStyle(color: AppColors.textHint)),
+                    child: Text(
+                      'কোনো পেমেন্ট নেই',
+                      style: TextStyle(color: AppColors.textHint),
+                    ),
                   )
                 else
-                  ...(_payments.map((p) => Card(
-                        child: ListTile(
-                          dense: true,
-                          title: Text('৳${p.amount.toStringAsFixed(0)}'),
-                          subtitle: Text('${p.method}  |  ${p.date.day}/${p.date.month}/${p.date.year}'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                            onPressed: () => _deletePayment(p),
-                          ),
+                  ...(_payments.map(
+                    (p) => Card(
+                      child: ListTile(
+                        dense: true,
+                        title: Text('৳${p.amount.toStringAsFixed(0)}'),
+                        subtitle: Text(
+                          '${p.method}  |  ${p.date.day}/${p.date.month}/${p.date.year}',
                         ),
-                      ))),
+                        trailing: IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
+                          onPressed: () => _deletePayment(p),
+                        ),
+                      ),
+                    ),
+                  )),
                 const SizedBox(height: 16),
                 if (showSignature)
                   Container(
@@ -554,14 +708,34 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('ইলেকট্রনিক স্বাক্ষর',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Row(
+                          children: [
+                            const Spacer(),
+                            Text(
+                              'ইলেকট্রনিক স্বাক্ষর',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.edit_note, size: 18, color: AppColors.primary),
+                            const Spacer(),
+                            Icon(
+                              Icons.edit_note,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 6),
-                            Text(signatureName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text(
+                              signatureName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -597,7 +771,10 @@ class _AmountField extends StatelessWidget {
         labelText: label,
         prefixText: prefixText,
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
       ),
       keyboardType: TextInputType.number,
       onChanged: onChanged,
@@ -611,19 +788,29 @@ class _BillRow extends StatelessWidget {
   final double amount;
   final bool isBold;
   final Color? color;
-  const _BillRow({required this.label, required this.amount, this.isBold = false, this.color});
+  const _BillRow({
+    required this.label,
+    required this.amount,
+    this.isBold = false,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: isBold ? const TextStyle(fontWeight: FontWeight.bold) : null),
-        Text('৳${amount.toStringAsFixed(0)}',
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              color: color,
-            )),
+        Text(
+          label,
+          style: isBold ? const TextStyle(fontWeight: FontWeight.bold) : null,
+        ),
+        Text(
+          '৳${amount.toStringAsFixed(0)}',
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            color: color,
+          ),
+        ),
       ],
     );
   }

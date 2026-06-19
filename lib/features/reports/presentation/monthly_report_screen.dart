@@ -196,8 +196,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalRent = _bills.fold<double>(0, (s, b) => s + b.rent);
-    final totalElectricity = _bills.fold<double>(0, (s, b) => s + b.electricity);
     final totalAmount = _bills.fold<double>(0, (s, b) => s + b.total);
     final totalPaid = _bills.fold<double>(0, (s, b) => s + b.paidAmount);
     final totalDue = _bills.fold<double>(0, (s, b) => s + b.due);

@@ -48,11 +48,6 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
     return flat.floor.isNotEmpty ? '${flat.floor} - ${flat.flatNo}' : flat.flatNo;
   }
 
-  String get _receiptNo {
-    final suffix = widget.bill.flatId.length > 4 ? widget.bill.flatId.substring(0, 4) : widget.bill.flatId;
-    return '${widget.bill.month}-$suffix';
-  }
-
   Future<void> _shareReceipt() async {
     setState(() => _isSharing = true);
     try {
@@ -70,10 +65,24 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
         total: widget.bill.total,
         paid: widget.bill.paidAmount,
         method: '',
-        receiptNo: _receiptNo,
         date: DateTime.now().toString().substring(0, 10),
+        prevReadingLabel: widget.bill.prevMeterReading > 0
+            ? widget.bill.prevMeterReading.toStringAsFixed(0)
+            : '',
+        currentReadingLabel: widget.bill.currentMeterReading > 0
+            ? widget.bill.currentMeterReading.toStringAsFixed(0)
+            : '',
       );
       await ExportService.shareFile(pdf, 'receipt_${widget.bill.id}.pdf');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('রসিদ শেয়ার করা যায়নি: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
@@ -111,20 +120,9 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Text(
-                        AppStrings.appName,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('${AppStrings.receiptNo}: $_receiptNo'),
                         Text(DateTime.now().toString().substring(0, 10)),
                       ],
                     ),
@@ -156,6 +154,21 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                     _RowItem(label: AppStrings.garage, value: bill.garage),
                     const Divider(height: 10),
                     _RowItem(label: AppStrings.electricity, value: bill.electricity),
+                    if (hasReading) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${AppStrings.prevReading}: ${bill.prevMeterReading.toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 12)),
+                            Text('${AppStrings.currentReading}: ${bill.currentMeterReading.toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
                     const Divider(height: 10),
                     _RowItem(label: AppStrings.total, value: bill.total, bold: true),
                     const Divider(height: 10),
@@ -166,22 +179,6 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                 ),
               ),
             ),
-            if (hasReading) ...[
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${AppStrings.prevReading}: ${bill.prevMeterReading.toStringAsFixed(0)}'),
-                      const SizedBox(height: 4),
-                      Text('${AppStrings.currentReading}: ${bill.currentMeterReading.toStringAsFixed(0)}'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -191,16 +188,22 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'স্বাক্ষর',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'স্বাক্ষর',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
                   const Align(
                     alignment: Alignment.centerRight,
-                    child: Text('________________'),
+                    child: SizedBox(
+                      width: 110,
+                      child: Divider(height: 1, thickness: 1, color: AppColors.textPrimary),
+                    ),
                   ),
                 ],
               ),
