@@ -44,6 +44,8 @@ class ExportService {
 
   static String _money(num value) => '৳ ${value.toStringAsFixed(0)}';
 
+  static String _dateOnly(DateTime date) => date.toIso8601String().substring(0, 10);
+
   static Future<Uint8List> _htmlToPdfBytes(String html, String filenameBase) async {
     final fonts = await _fontPaths();
     final file = await FlutterHtmlToPdf.convertFromHtmlContent(
@@ -253,6 +255,74 @@ class ExportService {
 ''';
   }
 
+  static String _buildReceiptCardHtml({
+    required String fontCss,
+    required String tenantName,
+    required String flatNo,
+    required String month,
+    required List<MapEntry<String, double>> items,
+    required double total,
+    required double paid,
+    required String date,
+    String prevReadingLabel = '',
+    String currentReadingLabel = '',
+  }) {
+    final receiptItems = items.map((item) {
+      final isElectricity = item.key.trim() == 'বিদ্যুৎ';
+      final readingHtml = isElectricity &&
+              (prevReadingLabel.isNotEmpty || currentReadingLabel.isNotEmpty)
+          ? '''
+          <div class="reading-block">
+            ${prevReadingLabel.isNotEmpty ? '<div>আগের রিডিং: ${_escapeHtml(prevReadingLabel)}</div>' : ''}
+            ${currentReadingLabel.isNotEmpty ? '<div>বর্তমান রিডিং: ${_escapeHtml(currentReadingLabel)}</div>' : ''}
+          </div>
+        '''
+          : '';
+      return '''
+        <div class="bill-row">
+          <div class="label-wrap">
+            <span>${_escapeHtml(item.key)}</span>
+            $readingHtml
+          </div>
+          <div class="amount">${_money(item.value)}</div>
+        </div>
+      ''';
+    }).join();
+
+    return '''
+    <div class="receipt-card">
+      <div class="receipt-title">রসিদ / RECEIPT</div>
+      <div class="meta-row"><span>তারিখ: ${_escapeHtml(date)}</span><span></span></div>
+      <div class="meta-row"><span>ভাড়াটিয়া: ${_escapeHtml(tenantName)}</span><span></span></div>
+      <div class="meta-row"><span>ফ্ল্যাট নং: ${_escapeHtml(flatNo)}</span><span></span></div>
+      <div class="meta-row"><span>মাস: ${_escapeHtml(month)}</span><span></span></div>
+      <div class="section">
+        $receiptItems
+      </div>
+      <div class="totals">
+        <div class="bill-row total">
+          <div>মোট</div>
+          <div class="amount">${_money(total)}</div>
+        </div>
+        <div class="bill-row">
+          <div>পরিশোধিত</div>
+          <div class="amount">${_money(paid)}</div>
+        </div>
+        <div class="bill-row due">
+          <div>বকেয়া</div>
+          <div class="amount">${_money(total - paid)}</div>
+        </div>
+      </div>
+      <div class="signature">
+        <div class="signature-box">
+          <div>স্বাক্ষর</div>
+          <div class="signature-line"></div>
+        </div>
+      </div>
+    </div>
+''';
+  }
+
   static String _buildReportHtml({
     required String fontCss,
     required String title,
@@ -354,6 +424,193 @@ class ExportService {
 ''';
   }
 
+  static String _buildMonthlyReceiptsHtml({
+    required String fontCss,
+    required String title,
+    required String period,
+    required List<ReceiptSheetEntry> receipts,
+  }) {
+    final pages = <String>[];
+    for (var i = 0; i < receipts.length; i += 4) {
+      final chunk = receipts.sublist(i, i + 4 > receipts.length ? receipts.length : i + 4);
+      final cells = List.generate(4, (index) {
+        if (index >= chunk.length) {
+          return '<td class="empty-cell"></td>';
+        }
+        final r = chunk[index];
+        return '''
+          <td>
+            ${_buildReceiptCardHtml(
+              fontCss: fontCss,
+              tenantName: r.tenantName,
+              flatNo: r.flatNo,
+              month: r.month,
+              items: r.items,
+              total: r.total,
+              paid: r.paid,
+              date: r.date,
+              prevReadingLabel: r.prevReadingLabel,
+              currentReadingLabel: r.currentReadingLabel,
+            )}
+          </td>
+        ''';
+      });
+
+      pages.add('''
+        <div class="page">
+          <div class="page-header">
+            <div class="page-title">${_escapeHtml(title)}</div>
+            <div class="page-period">${_escapeHtml(period)}</div>
+          </div>
+          <table class="sheet-grid">
+            <tr>${cells[0]}${cells[1]}</tr>
+            <tr>${cells[2]}${cells[3]}</tr>
+          </table>
+        </div>
+      ''');
+    }
+
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    $fontCss
+  </style>
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+    body {
+      font-family: 'NotoSerifBengali', sans-serif;
+      color: #111;
+      margin: 0;
+      padding: 0;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .page {
+      page-break-after: always;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .page-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .page-period {
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .sheet-grid {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 8px;
+      table-layout: fixed;
+    }
+    .sheet-grid td {
+      width: 50%;
+      vertical-align: top;
+      height: 50%;
+    }
+    .empty-cell {
+      border: 0;
+    }
+    .receipt-card {
+      height: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cfcfcf;
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .receipt-title {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
+    .section {
+      margin: 5px 0 6px;
+      border-top: 1px solid #222;
+      border-bottom: 1px solid #222;
+      padding: 4px 0;
+      flex: 1;
+    }
+    .bill-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 2px 0;
+    }
+    .label-wrap {
+      flex: 1;
+      min-width: 0;
+      padding-right: 8px;
+    }
+    .reading-block {
+      margin-top: 2px;
+      margin-left: 8px;
+      color: #444;
+      font-size: 9px;
+      line-height: 1.25;
+    }
+    .amount {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    .totals {
+      margin-top: 4px;
+    }
+    .totals .bill-row {
+      padding: 2px 0;
+    }
+    .totals .total {
+      font-weight: 700;
+    }
+    .totals .due {
+      color: #b3261e;
+      font-weight: 700;
+    }
+    .signature {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 6px;
+    }
+    .signature-box {
+      width: 120px;
+      text-align: right;
+    }
+    .signature-line {
+      margin-top: 14px;
+      border-top: 1px solid #111;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  ${pages.join()}
+</body>
+</html>
+''';
+  }
+
   static Future<Uint8List> generateReceiptPdf({
     required String tenantName,
     required String flatNo,
@@ -400,6 +657,21 @@ class ExportService {
     return _htmlToPdfBytes(html, 'report_${DateTime.now().millisecondsSinceEpoch}');
   }
 
+  static Future<Uint8List> generateMonthlyReceiptsPdf({
+    required String title,
+    required String period,
+    required List<ReceiptSheetEntry> receipts,
+  }) async {
+    final fontCss = await _fontCss();
+    final html = _buildMonthlyReceiptsHtml(
+      fontCss: fontCss,
+      title: title,
+      period: period,
+      receipts: receipts,
+    );
+    return _htmlToPdfBytes(html, 'report_receipts_${DateTime.now().millisecondsSinceEpoch}');
+  }
+
   static Future<void> shareFile(Uint8List bytes, String filename) async {
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$filename');
@@ -427,4 +699,28 @@ class ExportService {
 
     return excel.encode()!;
   }
+}
+
+class ReceiptSheetEntry {
+  final String tenantName;
+  final String flatNo;
+  final String month;
+  final String date;
+  final List<MapEntry<String, double>> items;
+  final double total;
+  final double paid;
+  final String prevReadingLabel;
+  final String currentReadingLabel;
+
+  ReceiptSheetEntry({
+    required this.tenantName,
+    required this.flatNo,
+    required this.month,
+    required this.date,
+    required this.items,
+    required this.total,
+    required this.paid,
+    this.prevReadingLabel = '',
+    this.currentReadingLabel = '',
+  });
 }

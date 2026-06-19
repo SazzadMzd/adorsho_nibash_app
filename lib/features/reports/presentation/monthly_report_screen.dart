@@ -97,35 +97,32 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   Future<void> _exportPdf() async {
     setState(() => _isExporting = true);
     try {
-      final headers = ['ফ্ল্যাট', 'ভাড়াটিয়া', 'ভাড়া', 'বিদ্যুৎ', 'মোট', 'পরিশোধিত', 'বকেয়া', 'স্ট্যাটাস'];
-      final List<List<String>> rows = _bills.map((b) {
-        final tenant = _tenantMap[b.tenantId];
-        final flat = _flatMap[b.flatId];
-        return [
-          _flatLabel(flat),
-          tenant?.name ?? '',
-          b.rent.toStringAsFixed(0),
-          b.electricity.toStringAsFixed(0),
-          b.total.toStringAsFixed(0),
-          b.paidAmount.toStringAsFixed(0),
-          b.due.toStringAsFixed(0),
-          b.status,
-        ];
+      final receipts = _bills.map((bill) {
+        final tenant = _tenantMap[bill.tenantId];
+        final flat = _flatMap[bill.flatId];
+        return ReceiptSheetEntry(
+          tenantName: tenant?.name ?? '',
+          flatNo: _flatLabel(flat),
+          month: BillGenerator.formatMonth(bill.month),
+          date: bill.createdAt.toIso8601String().substring(0, 10),
+          items: [
+            MapEntry(AppStrings.rent, bill.rent),
+            MapEntry(AppStrings.gas, bill.gas),
+            MapEntry(AppStrings.water, bill.water),
+            MapEntry(AppStrings.garage, bill.garage),
+            MapEntry(AppStrings.electricity, bill.electricity),
+          ],
+          total: bill.total,
+          paid: bill.paidAmount,
+          prevReadingLabel: bill.prevMeterReading > 0 ? bill.prevMeterReading.toStringAsFixed(0) : '',
+          currentReadingLabel: bill.currentMeterReading > 0 ? bill.currentMeterReading.toStringAsFixed(0) : '',
+        );
       }).toList();
 
-      final totalRent = _bills.fold<double>(0, (s, b) => s + b.rent);
-      final totalElectricity = _bills.fold<double>(0, (s, b) => s + b.electricity);
-      final totalAmount = _bills.fold<double>(0, (s, b) => s + b.total);
-      final totalPaid = _bills.fold<double>(0, (s, b) => s + b.paidAmount);
-      final totalDue = _bills.fold<double>(0, (s, b) => s + b.due);
-      rows.add(['সারসংক্ষেপ', '', totalRent.toStringAsFixed(0), totalElectricity.toStringAsFixed(0),
-          totalAmount.toStringAsFixed(0), totalPaid.toStringAsFixed(0), totalDue.toStringAsFixed(0), '']);
-
-      final pdf = await ExportService.generateReportPdf(
+      final pdf = await ExportService.generateMonthlyReceiptsPdf(
         title: 'মাসিক প্রতিবেদন',
         period: BillGenerator.formatMonth(_monthStr),
-        headers: headers,
-        rows: rows,
+        receipts: receipts,
       );
       await ExportService.shareFile(pdf, 'report_$_monthStr.pdf');
     } catch (e) {
