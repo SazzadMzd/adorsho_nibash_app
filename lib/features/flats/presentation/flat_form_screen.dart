@@ -4,6 +4,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/flat.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 
 class FlatFormScreen extends ConsumerStatefulWidget {
   final Flat? flat;
@@ -109,7 +110,9 @@ class _FlatFormScreenState extends ConsumerState<FlatFormScreen> {
       appBar: AppBar(
         title: Text(isEdit ? AppStrings.editFlat : AppStrings.addFlat),
       ),
-      body: SingleChildScrollView(
+      body: AnimatedPageEntrance(
+        slideOffset: 16,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -231,6 +234,7 @@ class _FlatFormScreenState extends ConsumerState<FlatFormScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

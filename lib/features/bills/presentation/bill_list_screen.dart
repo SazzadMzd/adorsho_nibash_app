@@ -9,6 +9,7 @@ import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/animations.dart';
 import '../../payments/presentation/collect_payment_screen.dart';
 import 'bill_form_screen.dart';
 import 'bill_generation_screen.dart';
@@ -97,10 +98,13 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
               }
               return ListView.builder(
                 itemCount: bills.length,
-                itemBuilder: (_, i) => _BillCard(
-                  bill: bills[i],
-                  flatLabel: _flatLabel(flatMap[bills[i].flatId]),
-                  openReceiptView: bills[i].isPaid || bills[i].isPartial,
+                itemBuilder: (_, i) => AnimatedListItem(
+                  index: i,
+                  child: _BillCard(
+                    bill: bills[i],
+                    flatLabel: _flatLabel(flatMap[bills[i].flatId]),
+                    openReceiptView: bills[i].isPaid || bills[i].isPartial,
+                  ),
                 ),
               );
             },

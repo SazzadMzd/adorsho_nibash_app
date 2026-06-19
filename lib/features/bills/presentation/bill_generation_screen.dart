@@ -6,6 +6,7 @@ import '../../../models/bill.dart';
 import '../../../models/electricity_reading.dart';
 import '../../../services/bill_generator.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 
 class BillGenerationScreen extends ConsumerStatefulWidget {
   const BillGenerationScreen({super.key});
@@ -95,7 +96,9 @@ class _BillGenerationScreenState extends ConsumerState<BillGenerationScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.generateBills)),
-      body: ListView(
+      body: AnimatedPageEntrance(
+        slideOffset: 16,
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Card(
@@ -160,6 +163,7 @@ class _BillGenerationScreenState extends ConsumerState<BillGenerationScreen> {
             error: (e, _) => Text('$e'),
           ),
         ],
+      ),
       ),
     );
   }

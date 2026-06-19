@@ -7,6 +7,7 @@ import '../../../models/flat.dart';
 import '../../../models/tenant.dart';
 import '../../../models/payment.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 import '../../../services/bill_generator.dart';
 
 class CollectPaymentScreen extends ConsumerStatefulWidget {
@@ -128,7 +129,9 @@ class _CollectPaymentScreenState extends ConsumerState<CollectPaymentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.collectPayment)),
-      body: SingleChildScrollView(
+      body: AnimatedPageEntrance(
+        slideOffset: 16,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -252,6 +255,7 @@ class _CollectPaymentScreenState extends ConsumerState<CollectPaymentScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../../services/auth_service.dart';
 import '../../users/presentation/user_management_screen.dart';
 import '../domain/dashboard_provider.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 import '../../bills/presentation/bill_list_screen.dart';
 import '../../payments/presentation/collect_payment_screen.dart';
 import '../../reports/presentation/report_list_screen.dart';
@@ -61,17 +62,20 @@ class DashboardScreen extends ConsumerWidget {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _MonthHeader(monthName: monthName),
-                const SizedBox(height: 16),
-                _SummaryGrid(data: data),
-                const SizedBox(height: 16),
-                _BillOverview(data: data),
-                const SizedBox(height: 16),
-                _QuickActions(context: context),
-              ],
+            child: AnimatedPageEntrance(
+              slideOffset: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _MonthHeader(monthName: monthName),
+                  const SizedBox(height: 16),
+                  _SummaryGrid(data: data),
+                  const SizedBox(height: 16),
+                  _BillOverview(data: data),
+                  const SizedBox(height: 16),
+                  _QuickActions(context: context),
+                ],
+              ),
             ),
           ),
         ),

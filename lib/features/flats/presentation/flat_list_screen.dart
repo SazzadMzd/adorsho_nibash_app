@@ -6,6 +6,7 @@ import '../../../models/flat.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/animations.dart';
 import 'flat_form_screen.dart';
 
 class FlatListScreen extends ConsumerWidget {
@@ -41,12 +42,15 @@ class FlatListScreen extends ConsumerWidget {
           }
           return ListView.builder(
             itemCount: flats.length,
-            itemBuilder: (_, i) => _FlatCard(
-              flat: flats[i],
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => FlatFormScreen(flat: flats[i]),
+            itemBuilder: (_, i) => AnimatedListItem(
+              index: i,
+              child: _FlatCard(
+                flat: flats[i],
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FlatFormScreen(flat: flats[i]),
+                  ),
                 ),
               ),
             ),

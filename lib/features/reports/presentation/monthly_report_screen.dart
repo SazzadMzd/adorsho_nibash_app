@@ -10,6 +10,7 @@ import '../../../services/bill_generator.dart';
 import '../../../services/export_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/animations.dart';
 import '../../bills/presentation/bill_form_screen.dart';
 
 class MonthlyReportScreen extends ConsumerStatefulWidget {
@@ -225,7 +226,9 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.monthlyReport)),
-      body: Column(
+      body: AnimatedPageEntrance(
+        slideOffset: 12,
+        child: Column(
         children: [
           // Month picker
           Container(
@@ -335,6 +338,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                       ),
           ),
         ],
+      ),
       ),
       floatingActionButton: _bills.isEmpty
           ? null

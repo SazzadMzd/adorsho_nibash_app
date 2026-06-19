@@ -9,6 +9,7 @@ import '../../../models/payment.dart';
 import '../../../services/bill_generator.dart';
 import '../../../services/export_service.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 
 class ReceiptViewScreen extends ConsumerStatefulWidget {
   final Bill bill;
@@ -180,7 +181,9 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
             ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: AnimatedPageEntrance(
+        slideOffset: 16,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
@@ -251,6 +254,7 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

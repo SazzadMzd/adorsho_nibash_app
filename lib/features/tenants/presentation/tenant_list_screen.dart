@@ -7,6 +7,7 @@ import '../../../models/tenant.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/animations.dart';
 import 'tenant_form_screen.dart';
 
 class TenantListScreen extends ConsumerWidget {
@@ -48,13 +49,16 @@ class TenantListScreen extends ConsumerWidget {
               }
               return ListView.builder(
                 itemCount: tenants.length,
-                itemBuilder: (_, i) => _TenantCard(
-                  tenant: tenants[i],
-                  flatLabel: _flatLabel(flatMap[tenants[i].flatId]),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TenantFormScreen(tenant: tenants[i]),
+                itemBuilder: (_, i) => AnimatedListItem(
+                  index: i,
+                  child: _TenantCard(
+                    tenant: tenants[i],
+                    flatLabel: _flatLabel(flatMap[tenants[i].flatId]),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TenantFormScreen(tenant: tenants[i]),
+                      ),
                     ),
                   ),
                 ),

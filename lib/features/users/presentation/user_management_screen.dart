@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../models/app_user_profile.dart';
 import '../../../services/auth_service.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 
 class UserManagementScreen extends ConsumerStatefulWidget {
   const UserManagementScreen({super.key});
@@ -108,41 +109,44 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final user = users[index];
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: user.isActive
-                        ? AppColors.paidColor.withValues(alpha: 0.2)
-                        : AppColors.pendingColor.withValues(alpha: 0.2),
-                    child: Icon(
-                      user.isActive ? Icons.person : Icons.person_off,
-                      color: user.isActive ? AppColors.paidColor : AppColors.pendingColor,
+              return AnimatedListItem(
+                index: index,
+                child: Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: user.isActive
+                          ? AppColors.paidColor.withValues(alpha: 0.2)
+                          : AppColors.pendingColor.withValues(alpha: 0.2),
+                      child: Icon(
+                        user.isActive ? Icons.person : Icons.person_off,
+                        color: user.isActive ? AppColors.paidColor : AppColors.pendingColor,
+                      ),
                     ),
+                    title: Text(user.name.isNotEmpty ? user.name : 'নাম নেই'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(user.email.isNotEmpty ? user.email : 'ইমেইল নেই'),
+                        const SizedBox(height: 2),
+                        Text(user.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'),
+                      ],
+                    ),
+                    isThreeLine: true,
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _openEditor(user: user);
+                        } else if (value == 'delete') {
+                          _deleteUser(user);
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('সম্পাদনা')),
+                        PopupMenuItem(value: 'delete', child: Text('মুছুন')),
+                      ],
+                    ),
+                    onTap: () => _openEditor(user: user),
                   ),
-                  title: Text(user.name.isNotEmpty ? user.name : 'নাম নেই'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(user.email.isNotEmpty ? user.email : 'ইমেইল নেই'),
-                      const SizedBox(height: 2),
-                      Text(user.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'),
-                    ],
-                  ),
-                  isThreeLine: true,
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _openEditor(user: user);
-                      } else if (value == 'delete') {
-                        _deleteUser(user);
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('সম্পাদনা')),
-                      PopupMenuItem(value: 'delete', child: Text('মুছুন')),
-                    ],
-                  ),
-                  onTap: () => _openEditor(user: user),
                 ),
               );
             },

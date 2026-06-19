@@ -6,6 +6,7 @@ import '../../../models/electricity_reading.dart';
 import '../../../models/flat.dart';
 import '../../../models/bill.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 import '../../../services/bill_generator.dart';
 
 class ReadingEntryScreen extends ConsumerStatefulWidget {
@@ -71,7 +72,9 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
             ? '${AppStrings.electricityReading} - ${widget.flatNo}'
             : AppStrings.electricityReading),
       ),
-      body: SingleChildScrollView(
+      body: AnimatedPageEntrance(
+        slideOffset: 16,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -143,6 +146,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

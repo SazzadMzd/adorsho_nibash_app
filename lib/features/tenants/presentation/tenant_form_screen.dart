@@ -7,6 +7,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/tenant.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/animations.dart';
 
 class TenantFormScreen extends ConsumerStatefulWidget {
   final Tenant? tenant;
@@ -248,7 +249,9 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
         title:
             Text(widget.tenant != null ? AppStrings.editTenant : AppStrings.addTenant),
       ),
-      body: SingleChildScrollView(
+      body: AnimatedPageEntrance(
+        slideOffset: 16,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -412,6 +415,7 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
