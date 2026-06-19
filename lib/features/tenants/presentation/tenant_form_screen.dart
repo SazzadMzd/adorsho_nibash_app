@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/tenant.dart';
@@ -17,8 +20,10 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _nidController;
   late final TextEditingController _depositController;
+  final ImagePicker _picker = ImagePicker();
+  File? _nidImageFile;
+  String? _nidImageUrl;
   String? _selectedFlatId;
   DateTime _joinDate = DateTime.now();
   bool _isLoading = false;
@@ -30,9 +35,9 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.tenant?.name ?? '');
     _phoneController = TextEditingController(text: widget.tenant?.phone ?? '');
-    _nidController = TextEditingController(text: widget.tenant?.nid ?? '');
     _depositController =
         TextEditingController(text: widget.tenant?.securityDeposit.toString() ?? '0');
+    _nidImageUrl = widget.tenant?.nidImageUrl;
     _selectedFlatId = widget.tenant?.flatId;
   }
 
@@ -40,9 +45,113 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _nidController.dispose();
     _depositController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picked = await _picker.pickImage(source: source, maxWidth: 1024, maxHeight: 1024);
+    if (picked != null) {
+      setState(() => _nidImageFile = File(picked.path));
+    }
+  }
+
+  void _showImageOptions() {
+    final hasImage = _nidImageFile != null || (_nidImageUrl != null && _nidImageUrl!.isNotEmpty);
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            if (hasImage)
+              ListTile(
+                leading: const Icon(Icons.visibility),
+                title: const Text('দেখুন'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _viewImageFullScreen();
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('ক্যামেরা'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('গ্যালারি'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            if (hasImage)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                title: const Text('ছবি সরান', style: TextStyle(color: AppColors.error)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _nidImageFile = null;
+                    _nidImageUrl = null;
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _viewImageFullScreen() {
+    Widget imageWidget;
+    if (_nidImageFile != null) {
+      imageWidget = Image.file(_nidImageFile!, fit: BoxFit.contain);
+    } else if (_nidImageUrl != null && _nidImageUrl!.isNotEmpty) {
+      if (_nidImageUrl!.startsWith('data:image')) {
+        imageWidget = Image.memory(
+          base64Decode(_nidImageUrl!.split(',').last),
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 64),
+        );
+      } else {
+        imageWidget = Image.network(_nidImageUrl!, fit: BoxFit.contain);
+      }
+    } else {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Center(child: imageWidget),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String> _encodeImageToBase64(File file) async {
+    final bytes = await file.readAsBytes();
+    final base64Str = base64Encode(bytes);
+    return 'data:image/jpeg;base64,$base64Str';
   }
 
   Future<void> _save() async {
@@ -75,27 +184,45 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
         return;
       }
 
-      final tenant = Tenant(
-        id: widget.tenant?.id ?? '',
-        name: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        nid: _nidController.text.trim(),
-        flatId: _selectedFlatId!,
-        joinedAt: _joinDate,
-        securityDeposit: double.tryParse(_depositController.text.trim()) ?? 0,
-      );
-
       final service = ref.read(firestoreServiceProvider);
-      if (widget.tenant != null) {
-        await service.updateTenant(widget.tenant!.id, tenant);
-      } else {
+      final isNew = widget.tenant == null;
+
+      if (isNew) {
+        final imageUrl = _nidImageFile != null
+            ? await _encodeImageToBase64(_nidImageFile!)
+            : null;
+
+        final tenant = Tenant(
+          id: '',
+          name: _nameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          nidImageUrl: imageUrl ?? '',
+          flatId: _selectedFlatId!,
+          joinedAt: _joinDate,
+          securityDeposit: double.tryParse(_depositController.text.trim()) ?? 0,
+        );
         await service.addTenant(tenant);
+      } else {
+        final imageUrl = _nidImageFile != null
+            ? await _encodeImageToBase64(_nidImageFile!)
+            : _nidImageUrl ?? '';
+
+        final tenant = Tenant(
+          id: widget.tenant!.id,
+          name: _nameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          nidImageUrl: imageUrl,
+          flatId: _selectedFlatId!,
+          joinedAt: _joinDate,
+          securityDeposit: double.tryParse(_depositController.text.trim()) ?? 0,
+        );
+        await service.updateTenant(widget.tenant!.id, tenant);
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.tenant != null ? 'আপডেট করা হয়েছে' : 'ভাড়াটিয়া যোগ করা হয়েছে'),
+            content: Text(isNew ? 'ভাড়াটিয়া যোগ করা হয়েছে' : 'আপডেট করা হয়েছে'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -142,12 +269,44 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _nidController,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.nid,
+              GestureDetector(
+                onTap: _showImageOptions,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: _nidImageFile != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.file(_nidImageFile!, height: 180, fit: BoxFit.cover),
+                        )
+                      : _nidImageUrl != null && _nidImageUrl!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: _nidImageUrl!.startsWith('data:image')
+                                  ? Image.memory(
+                                      base64Decode(_nidImageUrl!.split(',').last),
+                                      height: 180,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 48),
+                                    )
+                                  : Image.network(_nidImageUrl!, height: 180, fit: BoxFit.cover),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.camera_alt, color: Colors.grey.shade600),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'এনআইডি ছবি তুলুন',
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+                                ),
+                              ],
+                            ),
                 ),
-                keyboardType: TextInputType.text,
               ),
               const SizedBox(height: 12),
               flatsAsync.when(

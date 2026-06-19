@@ -5,6 +5,7 @@ class Tenant {
   final String name;
   final String phone;
   final String nid;
+  final String nidImageUrl;
   final String flatId;
   final DateTime joinedAt;
   final DateTime? leftAt;
@@ -16,6 +17,7 @@ class Tenant {
     required this.name,
     this.phone = '',
     this.nid = '',
+    this.nidImageUrl = '',
     required this.flatId,
     required this.joinedAt,
     this.leftAt,
@@ -29,6 +31,7 @@ class Tenant {
     'name': name,
     'phone': phone,
     'nid': nid,
+    'nidImageUrl': nidImageUrl,
     'flatId': flatId,
     'joinedAt': joinedAt,
     'leftAt': leftAt,
@@ -41,6 +44,7 @@ class Tenant {
     name: map['name'] ?? '',
     phone: map['phone'] ?? '',
     nid: map['nid'] ?? '',
+    nidImageUrl: map['nidImageUrl'] ?? '',
     flatId: map['flatId'] ?? '',
     joinedAt: timestampToDateTime(map['joinedAt']) ?? DateTime.now(),
     leftAt: timestampToDateTime(map['leftAt']),
@@ -53,6 +57,7 @@ class Tenant {
     String? name,
     String? phone,
     String? nid,
+    String? nidImageUrl,
     String? flatId,
     DateTime? joinedAt,
     DateTime? leftAt,
@@ -63,6 +68,7 @@ class Tenant {
     name: name ?? this.name,
     phone: phone ?? this.phone,
     nid: nid ?? this.nid,
+    nidImageUrl: nidImageUrl ?? this.nidImageUrl,
     flatId: flatId ?? this.flatId,
     joinedAt: joinedAt ?? this.joinedAt,
     leftAt: leftAt ?? this.leftAt,
