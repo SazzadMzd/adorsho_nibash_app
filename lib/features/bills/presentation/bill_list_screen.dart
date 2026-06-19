@@ -15,25 +15,53 @@ import 'bill_generation_screen.dart';
 import '../../receipts/presentation/receipt_view_screen.dart';
 
 class BillListScreen extends ConsumerStatefulWidget {
-  final String? initialFilter;
-  const BillListScreen({super.key, this.initialFilter});
+  final String? initialMonth;
+  const BillListScreen({super.key, this.initialMonth});
 
   @override
   ConsumerState<BillListScreen> createState() => _BillListScreenState();
 }
 
 class _BillListScreenState extends ConsumerState<BillListScreen> {
-  String _selectedFilter = 'all';
+  late String _selectedMonth;
+  late int _selectedYear;
+  late int _selectedMonthNum;
 
   @override
   void initState() {
     super.initState();
-    _selectedFilter = widget.initialFilter ?? 'all';
+    _selectedMonth = widget.initialMonth ?? BillGenerator.currentMonth();
+    final parts = _selectedMonth.split('-');
+    _selectedYear = int.parse(parts[0]);
+    _selectedMonthNum = int.parse(parts[1]);
+  }
+
+  Future<void> _showMonthPicker() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => _MonthYearPickerDialog(
+        initialYear: _selectedYear,
+        initialMonth: _selectedMonthNum,
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        if (result == 'all') {
+          _selectedMonth = 'all';
+        } else {
+          _selectedYear = int.parse(result.split('-')[0]);
+          _selectedMonthNum = int.parse(result.split('-')[1]);
+          _selectedMonth = result;
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final billsAsync = ref.watch(billsProvider);
+    final billsAsync = _selectedMonth == 'all'
+        ? ref.watch(billsProvider)
+        : ref.watch(billByMonthProvider(_selectedMonth));
     final flatsAsync = ref.watch(flatListProvider);
 
     return Scaffold(
@@ -48,18 +76,10 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
               MaterialPageRoute(builder: (_) => const BillGenerationScreen()),
             ),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (v) => setState(() => _selectedFilter = v),
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'all', child: Text(AppStrings.all)),
-              const PopupMenuItem(
-                  value: 'pending', child: Text(AppStrings.statusPending)),
-              const PopupMenuItem(
-                  value: 'partial', child: Text(AppStrings.statusPartial)),
-              const PopupMenuItem(
-                  value: 'paid', child: Text(AppStrings.statusPaid)),
-            ],
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            tooltip: 'মাস নির্বাচন',
+            onPressed: _showMonthPicker,
           ),
         ],
       ),
@@ -72,21 +92,15 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
             loading: () => const LoadingWidget(),
             error: (e, _) => Center(child: Text('$e')),
             data: (bills) {
-              var filtered = bills;
-              if (_selectedFilter != 'all') {
-                filtered = bills.where((b) => b.status == _selectedFilter).toList();
-              }
-              filtered.sort((a, b) => b.month.compareTo(a.month));
-
-              if (filtered.isEmpty) {
+              if (bills.isEmpty) {
                 return EmptyState(icon: Icons.receipt_long, message: AppStrings.noBills);
               }
               return ListView.builder(
-                itemCount: filtered.length,
+                itemCount: bills.length,
                 itemBuilder: (_, i) => _BillCard(
-                  bill: filtered[i],
-                  flatLabel: _flatLabel(flatMap[filtered[i].flatId]),
-                  openReceiptView: filtered[i].isPaid,
+                  bill: bills[i],
+                  flatLabel: _flatLabel(flatMap[bills[i].flatId]),
+                  openReceiptView: bills[i].isPaid || bills[i].isPartial,
                 ),
               );
             },
@@ -194,4 +208,120 @@ String _flatLabel(Flat? flat) {
   if (flat == null) return '';
   if (flat.floor.isNotEmpty) return '${flat.floor} - ${flat.flatNo}';
   return flat.flatNo;
+}
+
+class _MonthYearPickerDialog extends StatefulWidget {
+  final int initialYear;
+  final int initialMonth;
+  const _MonthYearPickerDialog({required this.initialYear, required this.initialMonth});
+
+  @override
+  State<_MonthYearPickerDialog> createState() => _MonthYearPickerDialogState();
+}
+
+class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
+  late int _year;
+  late int _selectedMonth;
+
+  static const _months = [
+    'জানু', 'ফেব্রু', 'মার্চ', 'এপ্রি',
+    'মে', 'জুন', 'জুলা', 'আগস্ট',
+    'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _year = widget.initialYear;
+    _selectedMonth = widget.initialMonth;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => setState(() => _year--),
+          ),
+          Text('$_year', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () => setState(() => _year++),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, 'all'),
+                icon: const Icon(Icons.list, size: 18),
+                label: const Text('সব বিল', style: TextStyle(fontSize: 14)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 2.5,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: 12,
+              itemBuilder: (_, i) {
+                final month = i + 1;
+                final isSelected = month == _selectedMonth;
+                return ElevatedButton(
+                  onPressed: () => setState(() => _selectedMonth = month),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSelected ? Theme.of(context).primaryColor : null,
+                    foregroundColor: isSelected ? Colors.white : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: isSelected
+                          ? BorderSide.none
+                          : BorderSide(color: Colors.grey.shade300),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: Text(
+                    _months[i],
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('বাতিল'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(
+            context,
+            '$_year-${_selectedMonth.toString().padLeft(2, '0')}',
+          ),
+          child: const Text('নির্বাচন'),
+        ),
+      ],
+    );
+  }
 }

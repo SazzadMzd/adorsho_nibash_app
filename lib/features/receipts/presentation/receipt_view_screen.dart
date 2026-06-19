@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../models/bill.dart';
 import '../../../models/flat.dart';
 import '../../../models/tenant.dart';
+import '../../../models/payment.dart';
 import '../../../services/bill_generator.dart';
 import '../../../services/export_service.dart';
 import '../../../shared/providers.dart';
@@ -21,6 +22,8 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
   Tenant? _tenant;
   Flat? _flat;
   bool _isSharing = false;
+  bool _isDeleting = false;
+  List<Payment> _payments = [];
 
   @override
   void initState() {
@@ -33,13 +36,23 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
     try {
       final tenantSnap = await service.getTenantDoc(widget.bill.tenantId);
       final flatSnap = await service.getFlatDoc(widget.bill.flatId);
+      final paymentsSnap = await service.getPaymentsByBill(widget.bill.id).first;
       if (mounted) {
         setState(() {
           _tenant = tenantSnap.exists ? Tenant.fromMap(tenantSnap.id, tenantSnap.data()!) : null;
           _flat = flatSnap.exists ? Flat.fromMap(flatSnap.id, flatSnap.data()!) : null;
+          _payments = paymentsSnap.docs
+              .map((d) => Payment.fromMap(d.id, d.data()))
+              .toList();
         });
       }
     } catch (_) {}
+  }
+
+  String get _paymentDate {
+    if (_payments.isEmpty) return widget.bill.createdAt.toIso8601String().substring(0, 10);
+    final lastPayment = _payments.reduce((a, b) => a.date.isAfter(b.date) ? a : b);
+    return '${lastPayment.date.day}/${lastPayment.date.month}/${lastPayment.date.year}';
   }
 
   String get _flatLabel {
@@ -65,8 +78,8 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
         ],
         total: widget.bill.total,
         paid: widget.bill.paidAmount,
-        method: '',
-        date: DateTime.now().toString().substring(0, 10),
+        method: _payments.isNotEmpty ? _payments.last.method : '',
+        date: _paymentDate,
         signatureName: widget.bill.signedBy.isNotEmpty
             ? widget.bill.signedBy
             : auth.currentDisplayName(),
@@ -92,13 +105,57 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
     }
   }
 
+  Future<void> _deleteBill() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('নিশ্চিত করুন'),
+        content: const Text('আপনি কি এই বিলটি মুছতে চান?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(AppStrings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(AppStrings.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await ref.read(firestoreServiceProvider).deleteBill(widget.bill.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('বিল মুছে ফেলা হয়েছে'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ত্রুটি: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bill = widget.bill;
+    final auth = ref.read(authServiceProvider);
     final hasReading = bill.currentMeterReading > 0 || bill.prevMeterReading > 0;
-    final signatureName = bill.signedBy.isNotEmpty
-        ? bill.signedBy
-        : ref.read(authServiceProvider).currentDisplayName();
 
     return Scaffold(
       appBar: AppBar(
@@ -115,6 +172,12 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                 : const Icon(Icons.share),
             tooltip: AppStrings.shareReceipt,
           ),
+          if (auth.isAdmin)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.white),
+              onPressed: _isDeleting ? null : _deleteBill,
+              tooltip: AppStrings.delete,
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -130,7 +193,7 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(DateTime.now().toString().substring(0, 10)),
+                        Text(_paymentDate),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -186,40 +249,6 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            if (bill.isPaid)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.divider),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        signatureName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: SizedBox(
-                        width: 110,
-                        child: Divider(height: 1, thickness: 1, color: AppColors.textPrimary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
       ),

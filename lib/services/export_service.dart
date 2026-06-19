@@ -115,16 +115,6 @@ class ExportService {
     final methodHtml = method.isNotEmpty
         ? '<div class="meta-row"><span>পরিশোধের মাধ্যম:</span><span>${_escapeHtml(method)}</span></div>'
         : '';
-    final signatureHtml = signatureName.trim().isNotEmpty
-        ? '''
-    <div class="signature">
-      <div class="signature-box">
-        <div>${_escapeHtml(signatureName)}</div>
-        <div class="signature-line"></div>
-      </div>
-    </div>
-'''
-        : '';
 
     return '''
 <!DOCTYPE html>
@@ -210,20 +200,6 @@ class ExportService {
       color: #b3261e;
       font-weight: 700;
     }
-    .signature {
-      margin-top: 18px;
-      display: flex;
-      justify-content: flex-end;
-    }
-    .signature-box {
-      width: 160px;
-      text-align: right;
-    }
-    .signature-line {
-      margin-top: 18px;
-      border-top: 1px solid #111;
-      width: 100%;
-    }
   </style>
 </head>
 <body>
@@ -253,8 +229,6 @@ class ExportService {
       </div>
       $methodHtml
     </div>
-
-    $signatureHtml
   </div>
 </body>
 </html>
@@ -296,17 +270,6 @@ class ExportService {
       ''';
     }).join();
 
-    final signatureHtml = signatureName.trim().isNotEmpty
-        ? '''
-      <div class="signature">
-        <div class="signature-box">
-          <div>${_escapeHtml(signatureName)}</div>
-          <div class="signature-line"></div>
-        </div>
-      </div>
-'''
-        : '';
-
     return '''
     <div class="receipt-card">
       <div class="receipt-title">রসিদ / RECEIPT</div>
@@ -331,7 +294,6 @@ class ExportService {
           <div class="amount">${_money(total - paid)}</div>
         </div>
       </div>
-      $signatureHtml
     </div>
 ''';
   }
@@ -625,6 +587,133 @@ class ExportService {
 ''';
   }
 
+  static String _buildSingleReceiptHtml({
+    required String fontCss,
+    required String tenantName,
+    required String flatNo,
+    required String month,
+    required List<MapEntry<String, double>> items,
+    required double total,
+    required double paid,
+    required String date,
+    String prevReadingLabel = '',
+    String currentReadingLabel = '',
+  }) {
+    final receiptItems = items.map((item) {
+      final isElectricity = item.key.trim() == 'বিদ্যুৎ';
+      final readingHtml = isElectricity &&
+              (prevReadingLabel.isNotEmpty || currentReadingLabel.isNotEmpty)
+          ? '''
+          <div class="reading-block">
+            ${prevReadingLabel.isNotEmpty ? '<div>আগের রিডিং: ${_escapeHtml(prevReadingLabel)}</div>' : ''}
+            ${currentReadingLabel.isNotEmpty ? '<div>বর্তমান রিডিং: ${_escapeHtml(currentReadingLabel)}</div>' : ''}
+          </div>
+        '''
+          : '';
+      return '''
+        <div class="bill-row">
+          <div class="label-wrap">
+            <span>${_escapeHtml(item.key)}</span>
+            $readingHtml
+          </div>
+          <div class="amount">${_money(item.value)}</div>
+        </div>
+      ''';
+    }).join();
+
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    $fontCss
+  </style>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body {
+      font-family: 'NotoSerifBengali', sans-serif;
+      color: #111;
+      margin: 0;
+      padding: 0;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .page { padding: 20px; }
+    .receipt-card {
+      border: 1px solid #cfcfcf;
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .receipt-title {
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+    .section {
+      margin: 8px 0 10px;
+      border-top: 1px solid #222;
+      border-bottom: 1px solid #222;
+      padding: 6px 0;
+    }
+    .bill-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #ececec;
+    }
+    .bill-row:last-child { border-bottom: 0; }
+    .label-wrap { flex: 1; min-width: 0; padding-right: 8px; }
+    .reading-block { margin-top: 2px; margin-left: 8px; color: #444; font-size: 10px; line-height: 1.25; }
+    .amount { flex: 0 0 auto; white-space: nowrap; font-weight: 500; }
+    .totals { margin-top: 6px; }
+    .totals .bill-row { padding: 4px 0; }
+    .totals .total { font-weight: 700; font-size: 14px; }
+    .totals .due { color: #b3261e; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="receipt-card">
+      <div class="receipt-title">রসিদ / RECEIPT</div>
+      <div class="meta-row"><span>তারিখ: ${_escapeHtml(date)}</span><span></span></div>
+      <div class="meta-row"><span>ভাড়াটিয়া: ${_escapeHtml(tenantName)}</span><span></span></div>
+      <div class="meta-row"><span>ফ্ল্যাট নং: ${_escapeHtml(flatNo)}</span><span></span></div>
+      <div class="meta-row"><span>মাস: ${_escapeHtml(month)}</span><span></span></div>
+      <div class="section">
+        $receiptItems
+      </div>
+      <div class="totals">
+        <div class="bill-row total">
+          <div>মোট</div>
+          <div class="amount">${_money(total)}</div>
+        </div>
+        <div class="bill-row">
+          <div>পরিশোধিত</div>
+          <div class="amount">${_money(paid)}</div>
+        </div>
+        <div class="bill-row due">
+          <div>বকেয়া</div>
+          <div class="amount">${_money(total - paid)}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+''';
+  }
+
   static Future<Uint8List> generateReceiptPdf({
     required String tenantName,
     required String flatNo,
@@ -639,7 +728,7 @@ class ExportService {
     String currentReadingLabel = '',
   }) async {
     final fontCss = await _fontCss();
-    final html = _buildReceiptHtml(
+    final html = _buildSingleReceiptHtml(
       fontCss: fontCss,
       tenantName: tenantName,
       flatNo: flatNo,
@@ -647,9 +736,7 @@ class ExportService {
       items: items,
       total: total,
       paid: paid,
-      method: method,
       date: date,
-      signatureName: signatureName,
       prevReadingLabel: prevReadingLabel,
       currentReadingLabel: currentReadingLabel,
     );

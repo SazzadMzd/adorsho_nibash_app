@@ -23,6 +23,7 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
   DateTime _joinDate = DateTime.now();
   bool _isLoading = false;
   bool _isDeleting = false;
+  bool _isMarkingLeft = false;
 
   @override
   void initState() {
@@ -56,6 +57,24 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final activeTenants = await ref.read(activeTenantListProvider.future);
+      final existingTenant = activeTenants.cast<Tenant?>().firstWhere(
+        (t) => t!.flatId == _selectedFlatId && t.id != widget.tenant?.id,
+        orElse: () => null,
+      );
+      if (existingTenant != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('এই ফ্ল্যাটে ইতিমধ্যে একজন সক্রিয় ভাড়াটিয়া আছে'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
       final tenant = Tenant(
         id: widget.tenant?.id ?? '',
         name: _nameController.text.trim(),
@@ -75,14 +94,17 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ভাড়াটিয়া যোগ করা হয়েছে')),
+          SnackBar(
+            content: Text(widget.tenant != null ? 'আপডেট করা হয়েছে' : 'ভাড়াটিয়া যোগ করা হয়েছে'),
+            backgroundColor: AppColors.success,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ত্রুটি: $e')),
+          SnackBar(content: Text('ত্রুটি: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -134,7 +156,7 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
                   decoration:
                       const InputDecoration(labelText: AppStrings.selectFlat),
                   items: flats
-                      .where((f) => f.isActive)
+                      .where((f) => f.isActive || f.id == _selectedFlatId)
                       .map((f) => DropdownMenuItem(
                             value: f.id,
                             child: Text(f.floor.isNotEmpty
@@ -188,6 +210,26 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
                 ),
               ),
               if (widget.tenant != null) ...[
+                const SizedBox(height: 12),
+                if (widget.tenant!.isActive)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: _isMarkingLeft ? null : _markAsLeft,
+                      icon: _isMarkingLeft
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.exit_to_app, color: AppColors.warning),
+                      label: Text(AppStrings.markLeft,
+                          style: const TextStyle(color: AppColors.warning)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.warning),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -245,6 +287,51 @@ class _TenantFormScreenState extends ConsumerState<TenantFormScreen> {
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
+  Future<void> _markAsLeft() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('নিশ্চিত করুন'),
+        content: const Text('আপনি কি এই ভাড়াটিয়াকে "চলে গেছেন" হিসেবে চিহ্নিত করতে চান?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text(AppStrings.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(AppStrings.confirm)),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isMarkingLeft = true);
+    try {
+      final tenant = widget.tenant!.copyWith(
+        status: 'left',
+        leftAt: DateTime.now(),
+      );
+      await ref.read(firestoreServiceProvider).updateTenant(widget.tenant!.id, tenant);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ভাড়াটিয়াকে চলে গেছেন হিসেবে চিহ্নিত করা হয়েছে'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ত্রুটি: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isMarkingLeft = false);
     }
   }
 }

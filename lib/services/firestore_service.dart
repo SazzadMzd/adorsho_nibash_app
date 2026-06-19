@@ -75,6 +75,26 @@ class FirestoreService {
   Future<DocumentSnapshot<Map<String, dynamic>>> getPayment(String id) =>
       _payments.doc(id).get();
 
+  Future<Map<String, List<Payment>>> getPaymentsByBillIds(List<String> billIds) async {
+    if (billIds.isEmpty) return {};
+    final result = <String, List<Payment>>{};
+    for (final id in billIds) {
+      result[id] = [];
+    }
+    final batches = <List<String>>[];
+    for (var i = 0; i < billIds.length; i += 10) {
+      batches.add(billIds.sublist(i, (i + 10 > billIds.length) ? billIds.length : i + 10));
+    }
+    for (final batch in batches) {
+      final snap = await _payments.where('billId', whereIn: batch).get();
+      for (final doc in snap.docs) {
+        final payment = Payment.fromMap(doc.id, doc.data());
+        result[payment.billId]?.add(payment);
+      }
+    }
+    return result;
+  }
+
   // Electricity Readings
   CollectionReference<Map<String, dynamic>> get _readings =>
       _db.collection('electricity_readings');
@@ -164,11 +184,17 @@ class FirestoreService {
       for (final d in previousBillsSnap.docs)
         Bill.fromMap(d.id, d.data()).flatId: Bill.fromMap(d.id, d.data()),
     };
+    final readingsSnap = await getReadingsByMonth(month);
+    final readingsByFlatId = {
+      for (final d in readingsSnap.docs)
+        ElectricityReading.fromMap(d.id, d.data()).flatId:
+            ElectricityReading.fromMap(d.id, d.data()),
+    };
     final bills = BillGenerator.createBills(
       month,
       activeTenants,
       flatMap,
-      null,
+      readingsByFlatId,
       previousBillsByFlatId,
     );
     final batch = _db.batch();

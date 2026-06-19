@@ -167,7 +167,7 @@ class _BillGenerationScreenState extends ConsumerState<BillGenerationScreen> {
   List<DropdownMenuItem<String>> _monthOptions() {
     final now = DateTime.now();
     final items = <DropdownMenuItem<String>>[];
-    for (var i = -3; i <= 1; i++) {
+    for (var i = -12; i <= 2; i++) {
       final d = DateTime(now.year, now.month + i, 1);
       final m = '${d.year}-${d.month.toString().padLeft(2, '0')}';
       items.add(DropdownMenuItem(value: m, child: Text(BillGenerator.formatMonth(m))));

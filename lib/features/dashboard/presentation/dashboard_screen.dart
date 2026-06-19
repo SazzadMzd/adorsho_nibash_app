@@ -337,8 +337,8 @@ class _QuickActions extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const BillListScreen(
-                      initialFilter: 'pending',
+                    builder: (_) => BillListScreen(
+                      initialMonth: BillGenerator.currentMonth(),
                     ),
                   ),
                 ),
@@ -357,8 +357,8 @@ class _QuickActions extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const BillListScreen(
-                      initialFilter: 'paid',
+                    builder: (_) => BillListScreen(
+                      initialMonth: BillGenerator.currentMonth(),
                     ),
                   ),
                 ),

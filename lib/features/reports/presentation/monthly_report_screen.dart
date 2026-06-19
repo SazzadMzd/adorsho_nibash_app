@@ -25,6 +25,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   List<Bill> _bills = [];
   Map<String, Tenant> _tenantMap = {};
   Map<String, Flat> _flatMap = {};
+  Map<String, DateTime> _paymentDates = {};
   bool _isLoading = false;
   bool _isExporting = false;
 
@@ -53,12 +54,24 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       final fMap = {for (final d in flatsSnap.docs)
         d.id: Flat.fromMap(d.id, d.data())};
 
+      final bills = snap.docs.map((d) => Bill.fromMap(d.id, d.data())).toList();
+      final billIds = bills.map((b) => b.id).toList();
+      final paymentsByBill = await service.getPaymentsByBillIds(billIds);
+      final paymentDates = <String, DateTime>{};
+      for (final entry in paymentsByBill.entries) {
+        if (entry.value.isNotEmpty) {
+          entry.value.sort((a, b) => b.date.compareTo(a.date));
+          paymentDates[entry.key] = entry.value.first.date;
+        }
+      }
+
       if (mounted) {
         setState(() {
-          _bills = snap.docs.map((d) => Bill.fromMap(d.id, d.data())).toList();
+          _bills = bills;
           _bills.sort((a, b) => a.flatId.compareTo(b.flatId));
           _tenantMap = tMap;
           _flatMap = fMap;
+          _paymentDates = paymentDates;
           _isLoading = false;
         });
       }
@@ -94,6 +107,14 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     return f.floor.isNotEmpty ? '${f.floor} - ${f.flatNo}' : f.flatNo;
   }
 
+  String _paymentDate(Bill bill) {
+    final pd = _paymentDates[bill.id];
+    if (pd != null) {
+      return '${pd.day}/${pd.month}/${pd.year}';
+    }
+    return '${bill.createdAt.day}/${bill.createdAt.month}/${bill.createdAt.year}';
+  }
+
   Future<void> _exportPdf() async {
     setState(() => _isExporting = true);
     try {
@@ -104,7 +125,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           tenantName: tenant?.name ?? '',
           flatNo: _flatLabel(flat),
           month: BillGenerator.formatMonth(bill.month),
-          date: bill.createdAt.toIso8601String().substring(0, 10),
+          date: _paymentDate(bill),
           items: [
             MapEntry(AppStrings.rent, bill.rent),
             MapEntry(AppStrings.gas, bill.gas),
@@ -141,7 +162,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     setState(() => _isExporting = true);
     try {
       final headers = ['ফ্ল্যাট', 'ভাড়াটিয়া', 'মাস', 'ভাড়া', 'গ্যাস', 'পানি', 'গ্যারেজ', 'বিদ্যুৎ',
-          'মোট', 'পরিশোধিত', 'বকেয়া', 'স্ট্যাটাস'];
+          'মোট', 'পরিশোধিত', 'বকেয়া', 'স্ট্যাটাস', 'প্রদানের তারিখ'];
       final data = _bills.map((b) {
         final tenant = _tenantMap[b.tenantId];
         final flat = _flatMap[b.flatId];
@@ -158,12 +179,13 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           b.paidAmount,
           b.due,
           b.status == 'paid' ? 'পরিশোধিত' : (b.status == 'partial' ? 'আংশিক' : 'বকেয়া'),
+          _paymentDate(b),
         ] as List<dynamic>;
       }).toList();
 
       // Summary row
       data.add([
-        'সারসংক্ষেপ', '', '',
+        'সারসংক্ষেপ', '', '', '',
         _bills.fold<double>(0, (s, b) => s + b.rent),
         _bills.fold<double>(0, (s, b) => s + b.gas),
         _bills.fold<double>(0, (s, b) => s + b.water),
@@ -172,6 +194,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         _bills.fold<double>(0, (s, b) => s + b.total),
         _bills.fold<double>(0, (s, b) => s + b.paidAmount),
         _bills.fold<double>(0, (s, b) => s + b.due),
+        '',
         '',
       ]);
 
@@ -294,7 +317,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                                 '${_flatLabel(flat)}  ${tenant?.name ?? ''}',
                                 style: const TextStyle(fontSize: 13),
                               ),
-                              subtitle: Text('মোট: ৳${bill.total.toStringAsFixed(0)}  |  বকেয়া: ৳${bill.due.toStringAsFixed(0)}',
+                              subtitle: Text('মোট: ৳${bill.total.toStringAsFixed(0)}  |  বকেয়া: ৳${bill.due.toStringAsFixed(0)}${bill.isPending ? '' : '  |  প্রদানের তারিখ: ${_paymentDate(bill)}'}',
                                   style: const TextStyle(fontSize: 11)),
                               trailing: StatusBadge(status: bill.status, fontSize: 10),
                               onTap: () async {

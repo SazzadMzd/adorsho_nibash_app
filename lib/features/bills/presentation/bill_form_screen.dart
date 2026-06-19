@@ -409,11 +409,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   @override
   Widget build(BuildContext context) {
     final bill = _bill;
-    final auth = ref.read(authServiceProvider);
-    final signatureName = bill.signedBy.isNotEmpty
-        ? bill.signedBy
-        : auth.currentDisplayName();
-    final showSignature = bill.isPaid;
+    final canShareReceipt = bill.isPaid || bill.isPartial;
     final showUpdateOnly = widget.updateOnly;
 
     return Scaffold(
@@ -424,7 +420,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
               : '${AppStrings.billDetails}: ${BillGenerator.formatMonth(bill.month)}',
         ),
         actions: [
-          if (!showUpdateOnly && showSignature)
+          if (!showUpdateOnly && canShareReceipt)
             IconButton(
               icon: const Icon(Icons.share, color: Colors.green),
               tooltip: AppStrings.shareReceipt,
@@ -719,50 +715,6 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                     ),
                   )),
                 const SizedBox(height: 16),
-                if (showSignature)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: AppColors.divider)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Spacer(),
-                            Text(
-                              'ইলেকট্রনিক স্বাক্ষর',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Spacer(),
-                            Icon(
-                              Icons.edit_note,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              signatureName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 32),
               ],
             ],
           ),
