@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../models/flat.dart';
 import '../../../models/bill.dart';
 import '../../../services/bill_generator.dart';
 import '../../../shared/providers.dart';
@@ -11,6 +12,7 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../payments/presentation/collect_payment_screen.dart';
 import 'bill_form_screen.dart';
 import 'bill_generation_screen.dart';
+import '../../receipts/presentation/receipt_view_screen.dart';
 
 class BillListScreen extends ConsumerStatefulWidget {
   final String? initialFilter;
@@ -32,6 +34,7 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
   @override
   Widget build(BuildContext context) {
     final billsAsync = ref.watch(billsProvider);
+    final flatsAsync = ref.watch(flatListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -60,22 +63,33 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
           ),
         ],
       ),
-      body: billsAsync.when(
+      body: flatsAsync.when(
         loading: () => const LoadingWidget(),
         error: (e, _) => Center(child: Text('$e')),
-        data: (bills) {
-          var filtered = bills;
-          if (_selectedFilter != 'all') {
-            filtered = bills.where((b) => b.status == _selectedFilter).toList();
-          }
-          filtered.sort((a, b) => b.month.compareTo(a.month));
+        data: (flats) {
+          final flatMap = {for (final flat in flats) flat.id: flat};
+          return billsAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (e, _) => Center(child: Text('$e')),
+            data: (bills) {
+              var filtered = bills;
+              if (_selectedFilter != 'all') {
+                filtered = bills.where((b) => b.status == _selectedFilter).toList();
+              }
+              filtered.sort((a, b) => b.month.compareTo(a.month));
 
-          if (filtered.isEmpty) {
-            return EmptyState(icon: Icons.receipt_long, message: AppStrings.noBills);
-          }
-          return ListView.builder(
-            itemCount: filtered.length,
-            itemBuilder: (_, i) => _BillCard(bill: filtered[i]),
+              if (filtered.isEmpty) {
+                return EmptyState(icon: Icons.receipt_long, message: AppStrings.noBills);
+              }
+              return ListView.builder(
+                itemCount: filtered.length,
+                itemBuilder: (_, i) => _BillCard(
+                  bill: filtered[i],
+                  flatLabel: _flatLabel(flatMap[filtered[i].flatId]),
+                  openReceiptView: filtered[i].isPaid,
+                ),
+              );
+            },
           );
         },
       ),
@@ -85,12 +99,22 @@ class _BillListScreenState extends ConsumerState<BillListScreen> {
 
 class _BillCard extends StatelessWidget {
   final Bill bill;
-  const _BillCard({required this.bill});
+  final String flatLabel;
+  final bool openReceiptView;
+  const _BillCard({
+    required this.bill,
+    required this.flatLabel,
+    required this.openReceiptView,
+  });
 
   void _openDetail(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => BillFormScreen(bill: bill)),
+      MaterialPageRoute(
+        builder: (_) => openReceiptView
+            ? ReceiptViewScreen(bill: bill)
+            : BillFormScreen(bill: bill, updateOnly: true),
+      ),
     );
   }
 
@@ -114,6 +138,12 @@ class _BillCard extends StatelessWidget {
                           const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 4),
+                    if (flatLabel.isNotEmpty)
+                      Text(
+                        flatLabel,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    if (flatLabel.isNotEmpty) const SizedBox(height: 2),
                     Text('${AppStrings.total}: ৳${bill.total.toStringAsFixed(0)}'),
                     if (bill.paidAmount > 0)
                       Text(
@@ -158,4 +188,10 @@ class _BillCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _flatLabel(Flat? flat) {
+  if (flat == null) return '';
+  if (flat.floor.isNotEmpty) return '${flat.floor} - ${flat.flatNo}';
+  return flat.flatNo;
 }

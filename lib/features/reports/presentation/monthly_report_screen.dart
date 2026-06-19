@@ -301,10 +301,15 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                               subtitle: Text('মোট: ৳${bill.total.toStringAsFixed(0)}  |  বকেয়া: ৳${bill.due.toStringAsFixed(0)}',
                                   style: const TextStyle(fontSize: 11)),
                               trailing: StatusBadge(status: bill.status, fontSize: 10),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => BillFormScreen(bill: bill)),
-                              ),
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BillFormScreen(bill: bill, updateOnly: true),
+                                  ),
+                                );
+                                _loadData();
+                              },
                             ),
                           );
                         },

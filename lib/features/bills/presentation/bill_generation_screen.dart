@@ -51,9 +51,19 @@ class _BillGenerationScreenState extends ConsumerState<BillGenerationScreen> {
           ElectricityReading.fromMap(d.id, d.data()).flatId:
               ElectricityReading.fromMap(d.id, d.data()),
       };
+      final previousMonth = BillGenerator.previousMonth(_selectedMonth);
+      final previousBillsSnap = await service.getMonthBillsSnapshot(previousMonth);
+      final previousBillsByFlatId = {
+        for (final d in previousBillsSnap.docs)
+          Bill.fromMap(d.id, d.data()).flatId: Bill.fromMap(d.id, d.data()),
+      };
 
       final bills = BillGenerator.createBills(
-        _selectedMonth, missingTenants, flatMap, readingsByFlatId,
+        _selectedMonth,
+        missingTenants,
+        flatMap,
+        readingsByFlatId,
+        previousBillsByFlatId,
       );
       for (final bill in bills) {
         await service.addBill(bill);

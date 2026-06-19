@@ -9,6 +9,17 @@ class BillGenerator {
     return '${now.year}-${now.month.toString().padLeft(2, '0')}';
   }
 
+  static String previousMonth(String month) {
+    final parts = month.split('-');
+    var y = int.parse(parts[0]);
+    var m = int.parse(parts[1]) - 1;
+    if (m < 1) {
+      m = 12;
+      y--;
+    }
+    return '$y-${m.toString().padLeft(2, '0')}';
+  }
+
   static String nextMonth(String month) {
     final parts = month.split('-');
     var y = int.parse(parts[0]);
@@ -69,8 +80,10 @@ class BillGenerator {
           }
 
           final prevBill = prevBillsByFlatId?[tenant.flatId];
-          if (prevBill != null && reading == null) {
-            prevReading = prevBill.currentMeterReading;
+          if (prevBill != null) {
+            if (reading == null || prevReading <= 0) {
+              prevReading = prevBill.currentMeterReading;
+            }
           }
 
           return Bill(

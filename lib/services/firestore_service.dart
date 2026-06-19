@@ -5,6 +5,7 @@ import '../models/bill.dart';
 import '../models/payment.dart';
 import '../models/electricity_reading.dart';
 import '../models/security_transaction.dart';
+import 'bill_generator.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -139,25 +140,22 @@ class FirestoreService {
     List<Tenant> activeTenants,
     Map<String, Flat> flatMap,
   ) async {
+    final previousMonth = BillGenerator.previousMonth(month);
+    final previousBillsSnap = await getMonthBillsSnapshot(previousMonth);
+    final previousBillsByFlatId = {
+      for (final d in previousBillsSnap.docs)
+        Bill.fromMap(d.id, d.data()).flatId: Bill.fromMap(d.id, d.data()),
+    };
+    final bills = BillGenerator.createBills(
+      month,
+      activeTenants,
+      flatMap,
+      null,
+      previousBillsByFlatId,
+    );
     final batch = _db.batch();
 
-    for (final tenant in activeTenants) {
-      final flat = flatMap[tenant.flatId];
-      if (flat == null) continue;
-
-      final bill = Bill(
-        id: '',
-        tenantId: tenant.id,
-        flatId: tenant.flatId,
-        month: month,
-        rent: flat.rent,
-        gas: flat.gas,
-        water: flat.water,
-        garage: flat.garage,
-        electricity: 0,
-        status: 'pending',
-      );
-
+    for (final bill in bills) {
       final docRef = _bills.doc();
       batch.set(docRef, bill.toMap());
     }
