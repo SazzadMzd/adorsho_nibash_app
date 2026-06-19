@@ -15,6 +15,8 @@ class AppStrings {
   // Auth
   static const String login = 'লগইন';
   static const String email = 'ইমেইল';
+  static const String users = 'ব্যবহারকারী';
+  static const String userManagement = 'ব্যবহারকারী ব্যবস্থাপনা';
   static const String password = 'পাসওয়ার্ড';
   static const String forgotPassword = 'পাসওয়ার্ড ভুলে গেছেন?';
   static const String loginButton = 'সাইন ইন';
@@ -147,6 +149,7 @@ class AppStrings {
   static const String noData = 'কোনো তথ্য নেই';
   static const String retry = 'পুনরায় চেষ্টা';
   static const String edit = 'সম্পাদনা';
+  static const String add = 'যোগ করুন';
 
   // Months Bangla
   static const String january = 'জানুয়ারী';

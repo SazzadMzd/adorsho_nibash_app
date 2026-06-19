@@ -15,6 +15,7 @@ class Bill {
   final String status;
   final double prevMeterReading;
   final double currentMeterReading;
+  final String signedBy;
   final DateTime createdAt;
 
   Bill({
@@ -32,6 +33,7 @@ class Bill {
     this.status = 'pending',
     this.prevMeterReading = 0,
     this.currentMeterReading = 0,
+    this.signedBy = '',
     DateTime? createdAt,
   })  : total = total ?? (rent + gas + water + garage + electricity),
         createdAt = createdAt ?? DateTime.now();
@@ -61,6 +63,7 @@ class Bill {
     'status': status,
     'prevMeterReading': prevMeterReading,
     'currentMeterReading': currentMeterReading,
+    'signedBy': signedBy,
     'createdAt': createdAt,
   };
 
@@ -79,6 +82,7 @@ class Bill {
     status: map['status'] ?? 'pending',
     prevMeterReading: (map['prevMeterReading'] ?? 0).toDouble(),
     currentMeterReading: (map['currentMeterReading'] ?? 0).toDouble(),
+    signedBy: map['signedBy'] ?? '',
     createdAt: timestampToDateTime(map['createdAt']) ?? DateTime.now(),
   );
 
@@ -97,6 +101,7 @@ class Bill {
     String? status,
     double? prevMeterReading,
     double? currentMeterReading,
+    String? signedBy,
     DateTime? createdAt,
   }) => Bill(
     id: id ?? this.id,
@@ -113,6 +118,7 @@ class Bill {
     status: status ?? this.status,
     prevMeterReading: prevMeterReading ?? this.prevMeterReading,
     currentMeterReading: currentMeterReading ?? this.currentMeterReading,
+    signedBy: signedBy ?? this.signedBy,
     createdAt: createdAt ?? this.createdAt,
   );
 }

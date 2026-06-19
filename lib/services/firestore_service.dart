@@ -5,6 +5,7 @@ import '../models/bill.dart';
 import '../models/payment.dart';
 import '../models/electricity_reading.dart';
 import '../models/security_transaction.dart';
+import '../models/app_user_profile.dart';
 import 'bill_generator.dart';
 
 class FirestoreService {
@@ -128,11 +129,28 @@ class FirestoreService {
       _settings.doc('app_settings').set(data, SetOptions(merge: true));
 
   // Users
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _db.collection('users');
+
   Future<DocumentSnapshot<Map<String, dynamic>>> getUser(String uid) =>
-      _db.collection('users').doc(uid).get();
+      _users.doc(uid).get();
 
   Future<void> setUser(String uid, Map<String, dynamic> data) =>
-      _db.collection('users').doc(uid).set(data, SetOptions(merge: true));
+      _users.doc(uid).set(data, SetOptions(merge: true));
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUsers() => _users
+      .orderBy('name')
+      .snapshots();
+
+  Future<DocumentReference<Map<String, dynamic>>> addUser(
+    AppUserProfile user,
+  ) =>
+      _users.add(user.toMap());
+
+  Future<void> updateUser(String id, AppUserProfile user) =>
+      _users.doc(id).set(user.toMap(), SetOptions(merge: true));
+
+  Future<void> deleteUser(String id) => _users.doc(id).delete();
 
   // Auto-generate bills
   Future<void> generateBillsForMonth(

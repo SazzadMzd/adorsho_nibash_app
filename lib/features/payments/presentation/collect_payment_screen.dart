@@ -94,9 +94,13 @@ class _CollectPaymentScreenState extends ConsumerState<CollectPaymentScreen> {
 
       final newPaid = _selectedBill!.paidAmount + amount;
       final newStatus = newPaid >= _selectedBill!.total ? 'paid' : 'partial';
+      final signedBy = newStatus == 'paid'
+          ? ref.read(authServiceProvider).currentDisplayName()
+          : _selectedBill!.signedBy;
       await service.updateBillPartial(_selectedBill!.id, {
         'paidAmount': newPaid,
         'status': newStatus,
+        'signedBy': signedBy,
       });
 
       if (mounted) {

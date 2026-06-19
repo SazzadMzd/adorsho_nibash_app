@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
+  static const String adminEmail = 'sazzad.mzd@gmail.com';
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -11,6 +12,18 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
   bool get isLoggedIn => _auth.currentUser != null;
+  bool get isAdmin => currentUser?.email == adminEmail;
+
+  String _fallbackName(User? user) {
+    final displayName = user?.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      final prefix = email.split('@').first.trim();
+      if (prefix.isNotEmpty) return prefix;
+    }
+    return 'ব্যবহারকারী';
+  }
 
   Future<void> init() async {
     final user = _auth.currentUser;
@@ -31,13 +44,17 @@ class AuthService {
   Future<void> _initUserDoc(String uid) async {
     final doc = await _db.collection('users').doc(uid).get();
     if (doc.exists) {
-      _userName = doc.data()?['name'] as String? ?? 'ব্যবহারকারী';
+      final storedName = doc.data()?['name'] as String?;
+      _userName = (storedName != null && storedName.trim().isNotEmpty)
+          ? storedName.trim()
+          : _fallbackName(currentUser);
     } else {
-      final name = currentUser?.displayName ?? 'ব্যবহারকারী';
+      final name = _fallbackName(currentUser);
       await _db.collection('users').doc(uid).set({
         'name': name,
         'email': currentUser?.email ?? '',
         'createdAt': DateTime.now(),
+        'updatedAt': DateTime.now(),
       });
       _userName = name;
     }
@@ -46,8 +63,18 @@ class AuthService {
   Future<void> updateUserName(String name) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    await _db.collection('users').doc(uid).update({'name': name});
+    await _db.collection('users').doc(uid).set({
+      'name': name,
+      'email': currentUser?.email ?? '',
+      'updatedAt': DateTime.now(),
+    }, SetOptions(merge: true));
     _userName = name;
+  }
+
+  String currentDisplayName() {
+    final name = _userName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return _fallbackName(currentUser);
   }
 
   Future<void> signOut() async {

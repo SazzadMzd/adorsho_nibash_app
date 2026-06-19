@@ -27,6 +27,7 @@ class BillFormScreen extends ConsumerStatefulWidget {
 }
 
 class _BillFormScreenState extends ConsumerState<BillFormScreen> {
+  late Bill _bill;
   late TextEditingController _rentController;
   late TextEditingController _gasController;
   late TextEditingController _waterController;
@@ -45,67 +46,79 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   @override
   void initState() {
     super.initState();
+    _bill = widget.bill;
     _rentController = TextEditingController(
-      text: widget.bill.rent.toStringAsFixed(0),
+      text: _bill.rent.toStringAsFixed(0),
     );
     _gasController = TextEditingController(
-      text: widget.bill.gas.toStringAsFixed(0),
+      text: _bill.gas.toStringAsFixed(0),
     );
     _waterController = TextEditingController(
-      text: widget.bill.water.toStringAsFixed(0),
+      text: _bill.water.toStringAsFixed(0),
     );
     _garageController = TextEditingController(
-      text: widget.bill.garage.toStringAsFixed(0),
+      text: _bill.garage.toStringAsFixed(0),
     );
     _electricityController = TextEditingController(
-      text: widget.bill.electricity.toStringAsFixed(0),
+      text: _bill.electricity.toStringAsFixed(0),
     );
     _previousReadingController = TextEditingController(
-      text: widget.bill.prevMeterReading > 0
-          ? widget.bill.prevMeterReading.toStringAsFixed(0)
+      text: _bill.prevMeterReading > 0
+          ? _bill.prevMeterReading.toStringAsFixed(0)
           : '',
     );
     _currentReadingController = TextEditingController(
-      text: widget.bill.currentMeterReading > 0
-          ? widget.bill.currentMeterReading.toStringAsFixed(0)
+      text: _bill.currentMeterReading > 0
+          ? _bill.currentMeterReading.toStringAsFixed(0)
           : '',
     );
-    _prevReading = widget.bill.prevMeterReading;
+    _prevReading = _bill.prevMeterReading;
     _loadData();
   }
 
   Future<void> _loadData() async {
     final service = ref.read(firestoreServiceProvider);
-    final paymentsSnap = await service.getPaymentsByBill(widget.bill.id).first;
+    final paymentsSnap = await service.getPaymentsByBill(_bill.id).first;
 
     DocumentSnapshot<Map<String, dynamic>>? tenantSnap;
     DocumentSnapshot<Map<String, dynamic>>? flatSnap;
     try {
-      tenantSnap = await service.getTenantDoc(widget.bill.tenantId);
-      flatSnap = await service.getFlatDoc(widget.bill.flatId);
+      tenantSnap = await service.getTenantDoc(_bill.tenantId);
+      flatSnap = await service.getFlatDoc(_bill.flatId);
     } catch (_) {}
 
     final p = paymentsSnap.docs
         .map((d) => Payment.fromMap(d.id, d.data()))
         .toList();
 
-    var previousReading = widget.bill.prevMeterReading;
+    var previousReading = _bill.prevMeterReading;
     if (previousReading <= 0) {
       try {
-        final previousMonth = BillGenerator.previousMonth(widget.bill.month);
+        final previousMonth = BillGenerator.previousMonth(_bill.month);
         final prevBillsSnap = await service.getMonthBillsSnapshot(
           previousMonth,
         );
         final prevBill = prevBillsSnap.docs
             .map((d) => Bill.fromMap(d.id, d.data()))
-            .where((b) => b.flatId == widget.bill.flatId)
+            .where((b) => b.flatId == _bill.flatId)
             .firstOrNull;
         previousReading = prevBill?.currentMeterReading ?? 0;
       } catch (_) {}
     }
 
+    Bill? latestBill;
+    try {
+      final billSnap = await service.getBill(_bill.id);
+      if (billSnap.exists) {
+        latestBill = Bill.fromMap(billSnap.id, billSnap.data()!);
+      }
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
+        if (latestBill != null) {
+          _bill = latestBill!;
+        }
         _tenant = tenantSnap?.exists == true
             ? Tenant.fromMap(tenantSnap!.id, tenantSnap.data()!)
             : null;
@@ -135,13 +148,13 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   }
 
   double get _liveRent =>
-      double.tryParse(_rentController.text.trim()) ?? widget.bill.rent;
+      double.tryParse(_rentController.text.trim()) ?? _bill.rent;
   double get _liveGas =>
-      double.tryParse(_gasController.text.trim()) ?? widget.bill.gas;
+      double.tryParse(_gasController.text.trim()) ?? _bill.gas;
   double get _liveWater =>
-      double.tryParse(_waterController.text.trim()) ?? widget.bill.water;
+      double.tryParse(_waterController.text.trim()) ?? _bill.water;
   double get _liveGarage =>
-      double.tryParse(_garageController.text.trim()) ?? widget.bill.garage;
+      double.tryParse(_garageController.text.trim()) ?? _bill.garage;
 
   double get _livePreviousReading {
     return double.tryParse(_previousReadingController.text.trim()) ??
@@ -150,7 +163,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   double get _liveCurrentReading {
     return double.tryParse(_currentReadingController.text.trim()) ??
-        widget.bill.currentMeterReading;
+        _bill.currentMeterReading;
   }
 
   double get _liveElectricity {
@@ -192,10 +205,10 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       }
 
       final updated = Bill(
-        id: widget.bill.id,
-        tenantId: widget.bill.tenantId,
-        flatId: widget.bill.flatId,
-        month: widget.bill.month,
+        id: _bill.id,
+        tenantId: _bill.tenantId,
+        flatId: _bill.flatId,
+        month: _bill.month,
         rent: _liveRent,
         gas: _liveGas,
         water: _liveWater,
@@ -203,13 +216,14 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         electricity: electricity,
         prevMeterReading: previousReading,
         currentMeterReading: currentReading,
-        status: widget.bill.status,
-        paidAmount: widget.bill.paidAmount,
+        status: _bill.status,
+        paidAmount: _bill.paidAmount,
+        signedBy: _bill.signedBy,
       );
 
       await ref
           .read(firestoreServiceProvider)
-          .updateBill(widget.bill.id, updated);
+          .updateBill(_bill.id, updated);
 
       if (mounted) {
         if (widget.updateOnly) {
@@ -259,7 +273,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
     setState(() => _isDeleting = true);
     try {
-      await ref.read(firestoreServiceProvider).deleteBill(widget.bill.id);
+      await ref.read(firestoreServiceProvider).deleteBill(_bill.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -307,14 +321,15 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       final service = ref.read(firestoreServiceProvider);
       await service.deletePayment(payment.id);
 
-      final newPaid = widget.bill.paidAmount - payment.amount;
+      final newPaid = _bill.paidAmount - payment.amount;
       final newStatus = newPaid <= 0
           ? 'pending'
-          : (newPaid >= widget.bill.total ? 'paid' : 'partial');
+          : (newPaid >= _bill.total ? 'paid' : 'partial');
       final safePaid = newPaid < 0 ? 0 : newPaid;
-      await service.updateBillPartial(widget.bill.id, {
+      await service.updateBillPartial(_bill.id, {
         'paidAmount': safePaid,
         'status': newStatus,
+        if (newStatus != 'paid') 'signedBy': '',
       });
 
       _loadData();
@@ -339,7 +354,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   }
 
   Future<void> _shareReceipt() async {
-    final bill = widget.bill;
+    final bill = _bill;
     if (bill.isPending) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -351,6 +366,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     }
 
     try {
+      final auth = ref.read(authServiceProvider);
       final pdf = await ExportService.generateReceiptPdf(
         tenantName: _tenant?.name ?? '',
         flatNo: _flatLabel,
@@ -366,6 +382,9 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
         paid: bill.paidAmount,
         method: '',
         date: DateTime.now().toString().substring(0, 10),
+        signatureName: bill.signedBy.isNotEmpty
+            ? bill.signedBy
+            : auth.currentDisplayName(),
         prevReadingLabel: _livePreviousReading > 0
             ? _livePreviousReading.toStringAsFixed(0)
             : '',
@@ -389,10 +408,12 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bill = widget.bill;
+    final bill = _bill;
     final auth = ref.read(authServiceProvider);
-    final signatureName = auth.userName ?? 'ব্যবহারকারী';
-    final showSignature = bill.isPaid || bill.isPartial;
+    final signatureName = bill.signedBy.isNotEmpty
+        ? bill.signedBy
+        : auth.currentDisplayName();
+    final showSignature = bill.isPaid;
     final showUpdateOnly = widget.updateOnly;
 
     return Scaffold(

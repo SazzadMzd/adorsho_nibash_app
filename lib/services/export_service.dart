@@ -86,6 +86,7 @@ class ExportService {
     required double paid,
     required String method,
     required String date,
+    required String signatureName,
     String prevReadingLabel = '',
     String currentReadingLabel = '',
   }) {
@@ -113,6 +114,16 @@ class ExportService {
 
     final methodHtml = method.isNotEmpty
         ? '<div class="meta-row"><span>পরিশোধের মাধ্যম:</span><span>${_escapeHtml(method)}</span></div>'
+        : '';
+    final signatureHtml = signatureName.trim().isNotEmpty
+        ? '''
+    <div class="signature">
+      <div class="signature-box">
+        <div>${_escapeHtml(signatureName)}</div>
+        <div class="signature-line"></div>
+      </div>
+    </div>
+'''
         : '';
 
     return '''
@@ -243,12 +254,7 @@ class ExportService {
       $methodHtml
     </div>
 
-    <div class="signature">
-      <div class="signature-box">
-        <div>স্বাক্ষর</div>
-        <div class="signature-line"></div>
-      </div>
-    </div>
+    $signatureHtml
   </div>
 </body>
 </html>
@@ -264,6 +270,7 @@ class ExportService {
     required double total,
     required double paid,
     required String date,
+    required String signatureName,
     String prevReadingLabel = '',
     String currentReadingLabel = '',
   }) {
@@ -289,6 +296,17 @@ class ExportService {
       ''';
     }).join();
 
+    final signatureHtml = signatureName.trim().isNotEmpty
+        ? '''
+      <div class="signature">
+        <div class="signature-box">
+          <div>${_escapeHtml(signatureName)}</div>
+          <div class="signature-line"></div>
+        </div>
+      </div>
+'''
+        : '';
+
     return '''
     <div class="receipt-card">
       <div class="receipt-title">রসিদ / RECEIPT</div>
@@ -313,12 +331,7 @@ class ExportService {
           <div class="amount">${_money(total - paid)}</div>
         </div>
       </div>
-      <div class="signature">
-        <div class="signature-box">
-          <div>স্বাক্ষর</div>
-          <div class="signature-line"></div>
-        </div>
-      </div>
+      $signatureHtml
     </div>
 ''';
   }
@@ -449,6 +462,7 @@ class ExportService {
               total: r.total,
               paid: r.paid,
               date: r.date,
+              signatureName: r.signatureName,
               prevReadingLabel: r.prevReadingLabel,
               currentReadingLabel: r.currentReadingLabel,
             )}
@@ -620,6 +634,7 @@ class ExportService {
     required double paid,
     required String method,
     required String date,
+    required String signatureName,
     String prevReadingLabel = '',
     String currentReadingLabel = '',
   }) async {
@@ -634,6 +649,7 @@ class ExportService {
       paid: paid,
       method: method,
       date: date,
+      signatureName: signatureName,
       prevReadingLabel: prevReadingLabel,
       currentReadingLabel: currentReadingLabel,
     );
@@ -709,6 +725,7 @@ class ReceiptSheetEntry {
   final List<MapEntry<String, double>> items;
   final double total;
   final double paid;
+  final String signatureName;
   final String prevReadingLabel;
   final String currentReadingLabel;
 
@@ -720,6 +737,7 @@ class ReceiptSheetEntry {
     required this.items,
     required this.total,
     required this.paid,
+    this.signatureName = '',
     this.prevReadingLabel = '',
     this.currentReadingLabel = '',
   });

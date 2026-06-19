@@ -51,6 +51,7 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
   Future<void> _shareReceipt() async {
     setState(() => _isSharing = true);
     try {
+      final auth = ref.read(authServiceProvider);
       final pdf = await ExportService.generateReceiptPdf(
         tenantName: _tenant?.name ?? '',
         flatNo: _flatLabel,
@@ -66,6 +67,9 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
         paid: widget.bill.paidAmount,
         method: '',
         date: DateTime.now().toString().substring(0, 10),
+        signatureName: widget.bill.signedBy.isNotEmpty
+            ? widget.bill.signedBy
+            : auth.currentDisplayName(),
         prevReadingLabel: widget.bill.prevMeterReading > 0
             ? widget.bill.prevMeterReading.toStringAsFixed(0)
             : '',
@@ -92,6 +96,9 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
   Widget build(BuildContext context) {
     final bill = widget.bill;
     final hasReading = bill.currentMeterReading > 0 || bill.prevMeterReading > 0;
+    final signatureName = bill.signedBy.isNotEmpty
+        ? bill.signedBy
+        : ref.read(authServiceProvider).currentDisplayName();
 
     return Scaffold(
       appBar: AppBar(
@@ -180,34 +187,39 @@ class _ReceiptViewScreenState extends ConsumerState<ReceiptViewScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.divider),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'স্বাক্ষর',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            if (bill.isPaid)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.divider),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        signatureName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 110,
-                      child: Divider(height: 1, thickness: 1, color: AppColors.textPrimary),
+                    const SizedBox(height: 14),
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: 110,
+                        child: Divider(height: 1, thickness: 1, color: AppColors.textPrimary),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

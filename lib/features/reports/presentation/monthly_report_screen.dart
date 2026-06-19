@@ -114,6 +114,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           ],
           total: bill.total,
           paid: bill.paidAmount,
+          signatureName: bill.isPaid ? bill.signedBy : '',
           prevReadingLabel: bill.prevMeterReading > 0 ? bill.prevMeterReading.toStringAsFixed(0) : '',
           currentReadingLabel: bill.currentMeterReading > 0 ? bill.currentMeterReading.toStringAsFixed(0) : '',
         );

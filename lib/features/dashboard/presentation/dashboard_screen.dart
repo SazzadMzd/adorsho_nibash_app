@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../services/auth_service.dart';
+import '../../users/presentation/user_management_screen.dart';
 import '../domain/dashboard_provider.dart';
+import '../../../shared/providers.dart';
 import '../../bills/presentation/bill_list_screen.dart';
 import '../../payments/presentation/collect_payment_screen.dart';
 import '../../reports/presentation/report_list_screen.dart';
@@ -14,6 +17,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(dashboardDataProvider);
+    final auth = ref.watch(authServiceProvider);
     final month = BillGenerator.currentMonth();
     final monthName = BillGenerator.formatMonth(month);
 
@@ -21,6 +25,19 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.dashboard),
         actions: [
+          if (auth.isAdmin)
+            IconButton(
+              icon: const Icon(Icons.manage_accounts),
+              tooltip: AppStrings.userManagement,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const UserManagementScreen(),
+                  ),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(dashboardDataProvider),
@@ -70,17 +87,35 @@ class _MonthHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Color(0xFFF1F8EE),
+              Color(0xFFFFFFFF),
+            ],
+          ),
+        ),
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(Icons.calendar_month, color: AppColors.primary, size: 28),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.calendar_month, color: AppColors.primary, size: 24),
+            ),
             const SizedBox(width: 12),
             Text(
               monthName,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: AppColors.primaryDark,
                   ),
             ),
           ],
@@ -149,7 +184,18 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.10),
+              Colors.white,
+            ],
+          ),
+        ),
         padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
